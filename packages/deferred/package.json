@@ -1,0 +1,28 @@
+{
+  "name": "@esutils/deferred",
+  "version": "0.1.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/esutils/esutils.git"
+  },
+  "description": "The deferred library implemented in Typescript",
+  "scripts": {
+    "build": "yarn run build:esm && yarn run build:cjs && yarn run build:types",
+    "build:esm": "tsc -p tsconfig.mjs.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "pretest": "yarn run build",
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config ../../jest.config.ts"
+  },
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/mjs/index.js"
+    }
+  },
+  "module": "./dist/mjs/index.js",
+  "types": "./dist/types/index.d.ts"
+}
