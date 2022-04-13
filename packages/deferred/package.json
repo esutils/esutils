@@ -7,6 +7,26 @@
     "url": "https://github.com/esutils/esutils.git"
   },
   "description": "The deferred library implemented in Typescript",
+  "keywords": [
+    "async",
+    "asynchronous",
+    "typescript",
+    "defer",
+    "deferred",
+    "promise",
+    "promises",
+    "future",
+    "futures",
+    "continuation",
+    "continuations",
+    "commonjs",
+    "module",
+    "es5",
+    "es6",
+    "es2015",
+    "es2020",
+    "es2022"
+  ],
   "scripts": {
     "build": "yarn run build:esm && yarn run build:cjs && yarn run build:types",
     "build:esm": "tsc -p tsconfig.mjs.json",
