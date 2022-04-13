@@ -5,13 +5,18 @@
 npm i -G yarn
 ```
 
-# New package
+# New solution
 
 ```bat
 yarn init
 yarn add -D typescript ts-node ts-jest @types/node @types/jest
 yarn run tsc --init
 ```
+
+# New module
+
+How to Create a Hybrid NPM Module for ESM and CommonJS is referenced
+to <https://www.sensedeep.com/blog/posts/2021/how-to-create-single-source-npm-module.html>
 
 # Install eslint support package
 
