@@ -106,14 +106,18 @@
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
   "include": [
-    "packages/deferred/**/*.js",
-    "packages/deferred/**/*.mjs",
-    "packages/deferred/**/*.cjs",
-    "packages/deferred/**/*.ts",
     "packages/async-semaphore/**/*.js",
     "packages/async-semaphore/**/*.mjs",
     "packages/async-semaphore/**/*.cjs",
     "packages/async-semaphore/**/*.ts",
+    "packages/deferred/**/*.js",
+    "packages/deferred/**/*.mjs",
+    "packages/deferred/**/*.cjs",
+    "packages/deferred/**/*.ts",
+    "packages/delay/**/*.js",
+    "packages/delay/**/*.mjs",
+    "packages/delay/**/*.cjs",
+    "packages/delay/**/*.ts",
     ".eslintrc.js",
     "jest.config.ts"
   ]

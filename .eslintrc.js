@@ -11,7 +11,11 @@ module.exports = {
       'off', // disable first
       // waiting https://github.com/import-js/eslint-plugin-import/issues/2430
       {
-        packageDir: [path.join(__dirname, './packages/deferred')],
+        packageDir: [
+          path.join(__dirname, './packages/async-semaphore'),
+          path.join(__dirname, './packages/deferred'),
+          path.join(__dirname, './packages/delay'),
+        ],
       },
     ],
     'no-underscore-dangle': [

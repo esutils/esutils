@@ -7,8 +7,9 @@
     "url": "https://github.com/esutils/esutils.git"
   },
   "workspaces": [
+    "packages/async-semaphore",
     "packages/deferred",
-    "packages/async-semaphore"
+    "packages/delay"
   ],
   "devDependencies": {
     "@types/jest": "^27.4.1",

@@ -1,0 +1,48 @@
+{
+  "name": "@esutils/delay",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/esutils/esutils.git"
+  },
+  "description": "The delay/sleep library implemented in `typescript`",
+  "keywords": [
+    "async",
+    "asynchronous",
+    "typescript",
+    "delay",
+    "sleep",
+    "promise",
+    "promises",
+    "future",
+    "futures",
+    "continuation",
+    "continuations",
+    "commonjs",
+    "module",
+    "es5",
+    "es6",
+    "es2015",
+    "es2020",
+    "es2022"
+  ],
+  "scripts": {
+    "build": "yarn run build:esm && yarn run build:cjs && yarn run build:types",
+    "build:esm": "tsc -p tsconfig.mjs.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "pretest": "yarn run build",
+    "prepublishOnly": "yarn run build",
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.ts"
+  },
+  "types": "./dist/types/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/mjs/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/mjs/index.js"
+    }
+  }
+}
