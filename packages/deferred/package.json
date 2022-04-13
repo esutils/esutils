@@ -33,6 +33,7 @@
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:types": "tsc -p tsconfig.types.json",
     "pretest": "yarn run build",
+    "prepublish": "yarn run build",
     "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config ../../jest.config.ts"
   },
   "type": "commonjs",
