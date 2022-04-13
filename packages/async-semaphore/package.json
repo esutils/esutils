@@ -1,18 +1,18 @@
 {
-  "name": "@esutils/deferred",
-  "version": "0.1.2",
+  "name": "@esutils/async-semaphore",
+  "version": "0.0.1",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/esutils/esutils.git"
   },
-  "description": "The deferred library implemented in Typescript",
+  "description": "The async semaphore library implemented in Typescript",
   "keywords": [
     "async",
     "asynchronous",
     "typescript",
-    "defer",
-    "deferred",
+    "async-semaphore",
+    "semaphore",
     "promise",
     "promises",
     "future",

@@ -110,6 +110,10 @@
     "packages/deferred/**/*.mjs",
     "packages/deferred/**/*.cjs",
     "packages/deferred/**/*.ts",
+    "packages/async-semaphore/**/*.js",
+    "packages/async-semaphore/**/*.mjs",
+    "packages/async-semaphore/**/*.cjs",
+    "packages/async-semaphore/**/*.ts",
     ".eslintrc.js",
     "jest.config.ts"
   ]
