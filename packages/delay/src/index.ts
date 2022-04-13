@@ -1,1 +1,1 @@
-export { delay, BBQ } from './delay';
+export { delay } from './delay';

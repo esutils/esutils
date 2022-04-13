@@ -8,7 +8,3 @@ export function delay(ms: number) {
     setTimeout(resolve, ms);
   });
 }
-
-export class BBQ {
-
-}
