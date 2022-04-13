@@ -120,6 +120,7 @@
     "packages/delay/**/*.ts",
     "scripts/**/*.mjs",
     ".eslintrc.js",
-    "jest.config.ts"
+    "jest.config.ts",
+    "packages/*/jest.config.ts",
   ]
 }

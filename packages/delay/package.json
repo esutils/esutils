@@ -6,13 +6,15 @@
     "type": "git",
     "url": "https://github.com/esutils/esutils.git"
   },
-  "description": "The delay/sleep library implemented in `typescript`",
+  "description": "A minimal delay/sleep library that implemented in `typescript`",
   "keywords": [
     "async",
     "asynchronous",
     "typescript",
     "delay",
     "sleep",
+    "wait",
+    "timeout",
     "promise",
     "promises",
     "future",

@@ -12,10 +12,10 @@ const config: Config.InitialOptions = {
     },
   },
   transform: {
-    '^.+\\.(cjs|js|jsx|ts|tsx)?$': 'ts-jest',
+    '^.+\\.(ts|tsx)?$': 'ts-jest',
   },
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.(mjs|[jt]sx?)$',
   moduleFileExtensions: ['cjs', 'js', 'jsx', 'ts', 'tsx', 'mjs'],
-  transformIgnorePatterns: ['/node_modules/', '\\.pnp\\.[^\\/]+$'],
+  transformIgnorePatterns: ['/node_modules/', '\\.pnp\\.[^\\/]+$', '/dist/'],
 };
 export default config;
