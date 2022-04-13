@@ -28,7 +28,7 @@
     "es2022"
   ],
   "scripts": {
-    "build": "yarn run build:esm && yarn run build:cjs && yarn run build:types",
+    "build": "node ../../scripts/init-dist.mjs && yarn run build:esm && yarn run build:cjs && yarn run build:types",
     "build:esm": "tsc -p tsconfig.mjs.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:types": "tsc -p tsconfig.types.json",
