@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/esutils/esutils.git"
   },
-  "description": "The deferred library implemented in Typescript",
+  "description": "The deferred library implemented in `typescript`",
   "keywords": [
     "async",
     "asynchronous",

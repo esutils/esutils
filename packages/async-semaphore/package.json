@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/esutils/esutils.git"
   },
-  "description": "The async semaphore library implemented in Typescript",
+  "description": "A minimal async semaphore library that implemented in `typescript`",
   "keywords": [
     "async",
     "asynchronous",

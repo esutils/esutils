@@ -1,7 +1,7 @@
 
-# A minimal `async-semaphore` library that written in `typescript`
+# A minimal async semaphore library that implemented in `typescript`
 
-This async-semaphore library can be used by `es` module, `commonjs` module and `typescript` module
+This async semaphore library can be used by `es` module, `commonjs` module and `typescript` module
 
 ## Examples
 

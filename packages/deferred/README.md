@@ -1,5 +1,5 @@
 
-# A minimal `deferred` library that written in `typescript`
+# A minimal deferred library that implemented in `typescript`
 
 This deferred library can be used by `es` module, `commonjs` module and `typescript` module
 
