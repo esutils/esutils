@@ -6,6 +6,7 @@ module.exports = {
   env: {
     'jest/globals': true,
   },
+  ignorePatterns: ['**/dist/**/*', '**/vendor/*.js'],
   rules: {
     'import/no-extraneous-dependencies': [
       'off', // disable first
