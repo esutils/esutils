@@ -16,6 +16,7 @@ module.exports = {
           path.join(__dirname, './packages/async-semaphore'),
           path.join(__dirname, './packages/deferred'),
           path.join(__dirname, './packages/delay'),
+          path.join(__dirname, './packages/invert'),
         ],
       },
     ],

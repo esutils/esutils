@@ -9,7 +9,8 @@
   "workspaces": [
     "packages/async-semaphore",
     "packages/deferred",
-    "packages/delay"
+    "packages/delay",
+    "packages/invert"
   ],
   "devDependencies": {
     "@types/jest": "^27.4.1",
