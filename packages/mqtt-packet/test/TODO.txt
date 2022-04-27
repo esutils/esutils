@@ -1,0 +1,2 @@
+https://github.com/shanewholloway/js-u8-mqtt-packet/blob/master/test/unit/test_v5_tiny.mjs
+https://github.com/mqttjs/mqtt-packet/blob/master/test.js

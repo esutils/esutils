@@ -11,7 +11,8 @@
     "packages/deferred",
     "packages/delay",
     "packages/empty",
-    "packages/invert"
+    "packages/invert",
+    "packages/mqtt-packet"
   ],
   "devDependencies": {
     "@types/jest": "^27.4.1",

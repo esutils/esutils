@@ -120,6 +120,7 @@
     "packages/delay/**/*.ts",
     "packages/empty/**/*.ts",
     "packages/invert/**/*.ts",
+    "packages/mqtt-packet/**/*.ts",
     "scripts/**/*.mjs",
     ".eslintrc.js",
     "jest.config.ts",

@@ -7,6 +7,14 @@ module.exports = {
     'jest/globals': true,
   },
   ignorePatterns: ['**/dist/**/*', '**/vendor/*.js'],
+  overrides: [
+    {
+      files: ['packages/mqtt-packet/**/*.ts'],
+      rules: {
+        'no-bitwise': 'off',
+      },
+    },
+  ],
   rules: {
     'import/no-extraneous-dependencies': [
       'off', // disable first
@@ -18,9 +26,11 @@ module.exports = {
           path.join(__dirname, './packages/delay'),
           path.join(__dirname, './packages/empty'),
           path.join(__dirname, './packages/invert'),
+          path.join(__dirname, './packages/mqtt-packet'),
         ],
       },
     ],
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-underscore-dangle': [
       'error',
       {
