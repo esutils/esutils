@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "paths": {
+      "@esutils/empty": [
+        "./src/index.ts"
+      ]
+    }
+  }
+}
