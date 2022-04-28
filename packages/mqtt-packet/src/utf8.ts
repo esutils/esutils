@@ -26,8 +26,11 @@ export function decodeUTF8String(
   buffer: Uint8Array,
   startIndex: number,
   utf8Decoder: UTF8Decoder,
-): UTF8DecodeResult {
+): UTF8DecodeResult | undefined {
   const bytes = decodeUint8Array(buffer, startIndex);
+  if (bytes === undefined) {
+    return undefined;
+  }
   const value = utf8Decoder.decode(bytes);
 
   return {

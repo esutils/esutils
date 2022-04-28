@@ -23,6 +23,7 @@
     "build": "node ../../scripts/init-dist.mjs && yarn run build:esm && yarn run build:cjs",
     "build:esm": "tsc -p tsconfig.mjs.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
+    "watch": "tsc -w -p tsconfig.cjs.json",
     "pretest": "yarn run build",
     "prepublishOnly": "yarn run build",
     "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.ts"

@@ -1,8 +1,8 @@
-import { IPubackPacket } from './basic';
-import { UTF8Encoder } from './utf8';
+import { IPubackPacket, PacketOptions, parseMessageId } from './basic';
+import { UTF8Decoder, UTF8Encoder } from './utf8';
 
 export default {
-  encode(packet: IPubackPacket, _utf8Encoder?: UTF8Encoder) {
+  encode(packet: IPubackPacket, _utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
     const packetType = 4;
     const flags = 0;
 
@@ -11,11 +11,12 @@ export default {
 
   decode(
     buffer: Uint8Array,
-    _remainingStart: number,
+    _flags: number,
     _remainingLength: number,
+    _utf8Decoder: UTF8Decoder,
+    _opts: PacketOptions,
   ): IPubackPacket {
-    const id = (buffer[2] << 8) + buffer[3];
-
+    const id = parseMessageId(buffer, 0);
     return {
       cmd: 'puback',
       messageId: id,

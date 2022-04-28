@@ -1,4 +1,4 @@
-import { IUnsubscribePacket } from './basic';
+import { IUnsubscribePacket, PacketOptions, parseMessageId } from './basic';
 import { encodeLength } from './length';
 import {
   UTF8Encoder,
@@ -8,7 +8,7 @@ import {
 } from './utf8';
 
 export default {
-  encode(packet: IUnsubscribePacket, utf8Encoder?: UTF8Encoder) {
+  encode(packet: IUnsubscribePacket, utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
     if (utf8Encoder === undefined) {
       throw new Error('utf8Encoder should provided for unsubscribe');
     }
@@ -34,20 +34,27 @@ export default {
 
   decode(
     buffer: Uint8Array,
-    remainingStart: number,
-    _remainingLength: number,
+    _flags: number,
+    remainingLength: number,
     utf8Decoder: UTF8Decoder,
+    _opts: PacketOptions,
   ): IUnsubscribePacket {
-    const idStart = remainingStart;
-    const id = (buffer[idStart] << 8) + buffer[idStart + 1];
+    const idStart = 0;
+    const id = parseMessageId(buffer, idStart);
+
+    if (remainingLength <= 0) {
+      throw new Error('Malformed unsubscribe, no payload specified');
+    }
 
     const topicFiltersStart = idStart + 2;
     const topicFilters: string[] = [];
 
     for (let i = topicFiltersStart; i < buffer.length;) {
       const topicFilter = decodeUTF8String(buffer, i, utf8Decoder);
+      if (topicFilter === undefined) {
+        throw new Error('Cannot parse topic');
+      }
       i += topicFilter.length;
-
       topicFilters.push(topicFilter.value);
     }
 

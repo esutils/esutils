@@ -1,8 +1,8 @@
-import { IConnackPacket } from './basic';
-import { UTF8Encoder } from './utf8';
+import { IConnackPacket, PacketOptions } from './basic';
+import { UTF8Decoder, UTF8Encoder } from './utf8';
 
 export default {
-  encode(packet: IConnackPacket, _utf8Encoder?: UTF8Encoder) {
+  encode(packet: IConnackPacket, _utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
     const packetType = 2;
     const flags = 0;
 
@@ -16,11 +16,19 @@ export default {
 
   decode(
     buffer: Uint8Array,
-    _remainingStart: number,
-    _remainingLength: number,
-  ): IConnackPacket {
-    const sessionPresent = (buffer[2] & 0x1) === 1;
-    const returnCode = buffer[3];
+    _flags: number,
+    remainingLength: number,
+    _utf8Decoder: UTF8Decoder,
+    _opts: PacketOptions,
+  ): IConnackPacket | undefined {
+    if (remainingLength < 2) {
+      return undefined;
+    }
+    if (buffer[0] & 0xfe) {
+      throw new Error('Invalid connack flags, bits 7-1 must be set to 0');
+    }
+    const sessionPresent = (buffer[0] & 0x1) === 1;
+    const returnCode = buffer[1];
 
     return {
       cmd: 'connack',

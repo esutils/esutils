@@ -14,6 +14,7 @@ it('encodeISubscribePacket', () => {
         ],
       },
       new TextEncoder(),
+      { protocolVersion: 4 },
     ),
     Uint8Array.from([
       // fixedHeader
@@ -64,6 +65,7 @@ it('decodeISubscribePacket', () => {
         1, // qos
       ]),
       new TextDecoder(),
+      { protocolVersion: 4 },
     ),
     {
       cmd: 'subscribe',
@@ -72,7 +74,7 @@ it('decodeISubscribePacket', () => {
         { topic: 'a/b', qos: 0 },
         { topic: 'c/d', qos: 1 },
       ],
-      length: 16,
+      length: 14,
     },
   );
 });

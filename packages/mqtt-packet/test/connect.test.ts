@@ -15,6 +15,7 @@ it(
           clientId: 'id',
         },
         utf8Encoder,
+        { protocolVersion: 4 },
       ),
       Uint8Array.from([
         // fixedHeader
@@ -53,6 +54,7 @@ it(
           clean: false,
         },
         utf8Encoder,
+        { protocolVersion: 4 },
       ),
       Uint8Array.from([
         // fixedHeader
@@ -91,6 +93,7 @@ it(
           keepalive: 300,
         },
         utf8Encoder,
+        { protocolVersion: 4 },
       ),
       Uint8Array.from([
         // fixedHeader
@@ -130,6 +133,7 @@ it(
           password: utf8Encoder.encode('pass'),
         },
         utf8Encoder,
+        { protocolVersion: 4 },
       ),
       Uint8Array.from([
         // fixedHeader
@@ -213,6 +217,7 @@ it(
           115, // 's'
         ]),
         utf8Decoder,
+        { protocolVersion: 4 },
       ),
       {
         cmd: 'connect',
@@ -224,7 +229,7 @@ it(
         will: undefined,
         clean: true,
         keepalive: 0,
-        length: 28,
+        length: 26,
       },
     );
   },

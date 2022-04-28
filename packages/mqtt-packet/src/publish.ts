@@ -1,5 +1,7 @@
 import { encodeLength } from './length';
-import { checkQoS, IPublishPacket } from './basic';
+import {
+  checkQoS, IPublishPacket, PacketOptions, parseMessageId,
+} from './basic';
 import {
   UTF8Encoder,
   UTF8Decoder,
@@ -8,7 +10,7 @@ import {
 } from './utf8';
 
 export default {
-  encode(packet: IPublishPacket, utf8Encoder?: UTF8Encoder) {
+  encode(packet: IPublishPacket, utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
     if (utf8Encoder === undefined) {
       throw new Error('utf8Encoder should provided for publish');
     }
@@ -47,18 +49,20 @@ export default {
 
   decode(
     buffer: Uint8Array,
-    remainingStart: number,
+    flags: number,
     remainingLength: number,
     utf8Decoder: UTF8Decoder,
+    _opts: PacketOptions,
   ): IPublishPacket {
-    const flags = buffer[0] & 0x0f;
-
     const dup = !!(flags & 8);
     const qos = checkQoS((flags & 6) >> 1);
     const retain = !!(flags & 1);
 
-    const topicStart = remainingStart;
+    const topicStart = 0;
     const decodedTopic = decodeUTF8String(buffer, topicStart, utf8Decoder);
+    if (decodedTopic === undefined) {
+      throw new Error('Cannot parse topic');
+    }
     const topic = decodedTopic.value;
 
     let id = 0;
@@ -66,25 +70,26 @@ export default {
 
     if (qos > 0) {
       const idStart = payloadStart;
-
-      id = (buffer[idStart] << 8) + buffer[idStart + 1];
-
+      id = parseMessageId(buffer, idStart);
       payloadStart += 2;
     }
 
-    const payload = buffer.slice(
+    const payload = buffer.subarray(
       payloadStart,
-      remainingStart + remainingLength,
+      remainingLength,
     );
 
-    return {
+    const returnPacket: IPublishPacket = {
       cmd: 'publish',
       topic,
       payload,
       dup,
       retain,
       qos,
-      messageId: id,
     };
+    if (id > 0) {
+      returnPacket.messageId = id;
+    }
+    return returnPacket;
   },
 };

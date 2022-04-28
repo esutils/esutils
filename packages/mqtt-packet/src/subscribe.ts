@@ -1,4 +1,6 @@
-import { checkQoS, ISubscribePacket, ISubscription } from './basic';
+import {
+  checkQoS, ISubscribePacket, ISubscription, PacketOptions, parseMessageId,
+} from './basic';
 import { encodeLength } from './length';
 import {
   UTF8Encoder,
@@ -8,7 +10,7 @@ import {
 } from './utf8';
 
 export default {
-  encode(packet: ISubscribePacket, utf8Encoder?: UTF8Encoder) {
+  encode(packet: ISubscribePacket, utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
     if (utf8Encoder === undefined) {
       throw new Error('utf8Encoder should provided for subscription');
     }
@@ -34,21 +36,32 @@ export default {
 
   decode(
     buffer: Uint8Array,
-    remainingStart: number,
-    _remainingLength: number,
+    _flags: number,
+    remainingLength: number,
     utf8Decoder: UTF8Decoder,
+    _opts: PacketOptions,
   ): ISubscribePacket {
-    const idStart = remainingStart;
-    const id = (buffer[idStart] << 8) + buffer[idStart + 1];
-
+    const idStart = 0;
+    const id = parseMessageId(buffer, idStart);
+    if (remainingLength <= 0) {
+      throw new Error('Malformed subscribe, no payload specified');
+    }
     const subscriptionsStart = idStart + 2;
     const subscriptions: ISubscription[] = [];
-
     for (let i = subscriptionsStart; i < buffer.length;) {
       const topicFilter = decodeUTF8String(buffer, i, utf8Decoder);
+      if (topicFilter === undefined) {
+        throw new Error('Cannot parse topic');
+      }
       i += topicFilter.length;
-
-      const qos = checkQoS(buffer[i]);
+      if (i >= buffer.length) {
+        throw new Error('Malformed Subscribe Payload');
+      }
+      const options = buffer[i];
+      if (options & 0xfc) {
+        throw new Error('Invalid subscribe topic flag bits, bits 7-2 must be 0');
+      }
+      const qos = checkQoS(options & 0x3);
       i += 1;
 
       subscriptions.push({

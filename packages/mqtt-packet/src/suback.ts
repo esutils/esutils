@@ -1,8 +1,8 @@
-import { ISubackPacket } from './basic';
-import { UTF8Encoder } from './utf8';
+import { ISubackPacket, PacketOptions, parseMessageId } from './basic';
+import { UTF8Decoder, UTF8Encoder } from './utf8';
 
 export default {
-  encode(packet: ISubackPacket, _utf8Encoder?: UTF8Encoder) {
+  encode(packet: ISubackPacket, _utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
     const packetType = 9;
     const flags = 0;
 
@@ -17,13 +17,19 @@ export default {
 
   decode(
     buffer: Uint8Array,
-    remainingStart: number,
-    _remainingLength: number,
+    _flags: number,
+    remainingLength: number,
+    _utf8Decoder: UTF8Decoder,
+    _opts: PacketOptions,
   ): ISubackPacket {
-    const idStart = remainingStart;
-    const id = (buffer[idStart] << 8) + buffer[idStart + 1];
+    const idStart = 0;
+    const id = parseMessageId(buffer, idStart);
     const payloadStart = idStart + 2;
     const granted = [];
+
+    if (remainingLength <= 0) {
+      throw new Error('Malformed suback, no payload specified');
+    }
 
     for (let i = payloadStart; i < buffer.length; i += 1) {
       const returnCode = buffer[i];
@@ -38,7 +44,7 @@ export default {
       if (returnCode <= 2 || returnCode === 0x80) {
         granted.push(returnCode);
       } else {
-        throw new Error('Invalid unsuback code');
+        throw new Error('Invalid suback QoS, must be <= 2');
       }
     }
 

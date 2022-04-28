@@ -11,9 +11,10 @@ it('encodeIPublishPacket', () => {
         cmd: 'publish',
         messageId: 0,
         topic: 'a/b',
-        payload: 'payload',
+        payload: Buffer.from('payload'),
       },
       new TextEncoder(),
+      { protocolVersion: 4 },
     ),
     Uint8Array.from([
       // fixedHeader
@@ -60,13 +61,13 @@ it('decodeIPublishPacket', () => {
         100, // 'd'
       ]),
       utf8Decoder,
+      { protocolVersion: 4 },
     ),
     {
       cmd: 'publish',
       dup: false,
       qos: 0,
       retain: false,
-      messageId: 0,
       topic: 'a/b',
       payload: Uint8Array.from([
         112, // 'p'
@@ -77,7 +78,7 @@ it('decodeIPublishPacket', () => {
         97, // 'a'
         100, // 'd'
       ]),
-      length: 14,
+      length: 12,
     },
   );
 });
@@ -110,13 +111,13 @@ it(
           99, // 'c'
         ]),
         utf8Decoder,
+        { protocolVersion: 4 },
       ),
       {
         cmd: 'publish',
         dup: false,
         qos: 0,
         retain: false,
-        messageId: 0,
         topic: 'a/b',
         payload: Uint8Array.from([
           112, // 'p'
@@ -127,7 +128,7 @@ it(
           97, // 'a'
           100, // 'd'
         ]),
-        length: 14,
+        length: 12,
       },
     );
   },

@@ -1,11 +1,16 @@
 /* eslint-disable max-len */
 export type QoS = 0 | 1 | 2;
+/*
+  3 = MQTT V3.1
+  4 = MQTT V3.1.1
+  5 = MQTT V5
+*/
 export type ProtocolVersion = 3 | 4 | 5;
 export type ProtocolId = 'MQTT' | 'MQIsdp';
 
-export function checkQoS(qos: number): QoS {
+export function checkQoS(qos: number, error?: string): QoS {
   if (qos !== 0 && qos !== 1 && qos !== 2) {
-    throw new Error('invalid qos');
+    throw new Error(error ?? 'invalid qos');
   }
   return qos;
 }
@@ -19,7 +24,7 @@ export function checkProtocolVersion(version: number): ProtocolVersion {
 
 export function checkProtocolId(id: string): ProtocolId {
   if (id !== 'MQTT' && id !== 'MQIsdp') {
-    throw new Error('Invalid protocol version');
+    throw new Error('Invalid protocol id');
   }
   return id;
 }
@@ -58,6 +63,8 @@ export interface IConnectPacket extends IPacket {
   username?: string;
   password?: Uint8Array;
   will?: {
+    topic?: string
+    payload?: Uint8Array
     retain?: boolean;
     qos?: QoS;
   };
@@ -103,14 +110,17 @@ export interface IPubcompPacket extends IPacket {
   messageId: number;
 }
 
-export interface IPublishPacket extends IPacket {
-  cmd: 'publish';
-  messageId: number;
+export interface PublishOptions {
   qos?: QoS;
   dup?: boolean;
   retain?: boolean;
+}
+
+export interface IPublishPacket extends PublishOptions, IPacket {
+  cmd: 'publish';
+  messageId?: number; // only for qos1 and qos2
   topic: string;
-  payload: string | Uint8Array;
+  payload: Uint8Array;
 }
 
 export interface IPubrecPacket extends IPacket {
@@ -123,7 +133,7 @@ export interface IPubrelPacket extends IPacket {
   messageId: number;
 }
 
-export interface ISubackPacket {
+export interface ISubackPacket extends IPacket {
   cmd: 'suback';
   messageId: number;
   granted: number[];
@@ -134,21 +144,25 @@ export interface ISubscription {
   qos: QoS;
 }
 
-export interface ISubscribePacket {
+export interface ISubscribePacket extends IPacket {
   cmd: 'subscribe';
   messageId: number;
   subscriptions: ISubscription[];
 }
 
-export interface IUnsubackPacket {
+export interface IUnsubackPacket extends IPacket {
   cmd: 'unsuback';
   messageId: number;
 }
 
-export interface IUnsubscribePacket {
+export interface IUnsubscribePacket extends IPacket {
   cmd: 'unsubscribe';
   messageId: number;
   unsubscriptions: string[];
+}
+
+export interface PacketOptions {
+  protocolVersion: ProtocolVersion
 }
 
 export function encodeUint8Array(bytes: Uint8Array) {
@@ -158,8 +172,22 @@ export function encodeUint8Array(bytes: Uint8Array) {
 export function decodeUint8Array(
   buffer: Uint8Array,
   startIndex: number,
-): Uint8Array {
+): Uint8Array | undefined {
+  if (startIndex >= buffer.length || (startIndex + 2 > buffer.length)) {
+    return undefined;
+  }
   const length = (buffer[startIndex] << 8) + buffer[startIndex + 1];
   const bytes = buffer.subarray(startIndex + 2, startIndex + 2 + length);
   return bytes;
+}
+
+export function parseMessageId(buffer: Uint8Array, startIndex: number): number {
+  if (startIndex + 2 > buffer.length) {
+    throw new Error('Cannot parse messageId');
+  }
+  return (buffer[startIndex] << 8) | buffer[startIndex + 1];
+}
+
+export function createHeaderFlagsError(requiredHeaderFlag: number, types: string): string {
+  return `Invalid header flag bits, must be 0x${requiredHeaderFlag.toString(16)} for ${types} packet`;
 }

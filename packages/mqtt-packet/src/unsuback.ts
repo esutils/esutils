@@ -1,8 +1,8 @@
-import { IUnsubackPacket } from './basic';
-import { UTF8Encoder } from './utf8';
+import { IUnsubackPacket, PacketOptions, parseMessageId } from './basic';
+import { UTF8Decoder, UTF8Encoder } from './utf8';
 
 export default {
-  encode(packet: IUnsubackPacket, _utf8Encoder?: UTF8Encoder) {
+  encode(packet: IUnsubackPacket, _utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
     const packetType = 11;
     const flags = 0;
 
@@ -11,10 +11,18 @@ export default {
 
   decode(
     buffer: Uint8Array,
-    _remainingStart: number,
-    _remainingLength: number,
+    _flags: number,
+    remainingLength: number,
+    _utf8Decoder: UTF8Decoder,
+    _opts: PacketOptions,
   ): IUnsubackPacket {
-    const id = (buffer[2] << 8) + buffer[3];
+    if (remainingLength !== 2) {
+      throw new Error('Malformed unsuback, payload length must be 2');
+    }
+    if (remainingLength <= 0) {
+      throw new Error('Malformed unsuback, no payload specified');
+    }
+    const id = parseMessageId(buffer, 0);
 
     return {
       cmd: 'unsuback',
