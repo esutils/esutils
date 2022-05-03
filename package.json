@@ -12,6 +12,7 @@
     "packages/delay",
     "packages/empty",
     "packages/invert",
+    "packages/mqtt-client",
     "packages/mqtt-packet"
   ],
   "devDependencies": {

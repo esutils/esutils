@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "paths": {
+      "@esutils/mqtt-client": [
+        "./src/index.ts"
+      ]
+    }
+  }
+}
