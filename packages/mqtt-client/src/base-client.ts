@@ -22,7 +22,19 @@ import {
   PublishOptions,
 } from '@esutils/mqtt-packet';
 
-export type URLFactory = URL | string | (() => URL | string | void);
+export interface URL {
+  readonly origin: string;
+
+  hash: string;
+  hostname: string;
+  password: string;
+  pathname: string;
+  port: string;
+  protocol: string;
+  search: string;
+  username: string;
+}
+
 export type ClientIdFactory = string | (() => string);
 
 export interface BaseClientOptions {
@@ -30,7 +42,7 @@ export interface BaseClientOptions {
   utf8Encoder: UTF8Encoder;
   utf8Decoder: UTF8Decoder;
 
-  url?: URLFactory;
+  url: URL;
   clientId?: ClientIdFactory;
   clientIdPrefix?: string;
   clean?: boolean;
@@ -150,7 +162,7 @@ export class OutgoingMemoryStore extends OutgoingStore {
   }
 }
 
-const defaultPorts: { [protocol: string]: number } = {
+export const DefaultPorts: { [protocol: string]: number } = {
   mqtt: 1883,
   mqtts: 8883,
   ws: 80,
@@ -614,8 +626,6 @@ export abstract class BaseClient {
   }
 
   // Methods implemented by subclasses
-
-  protected abstract getDefaultURL(): URL | string;
 
   protected abstract validateURL(url: URL): void;
 
@@ -1206,43 +1216,17 @@ export abstract class BaseClient {
   }
 
   private getURL(): URL {
-    let url: URL | string | void = typeof this.options.url === 'function'
-      ? this.options.url()
-      : this.options.url;
-
-    if (!url) {
-      url = this.getDefaultURL();
-    }
-
-    if (typeof url === 'string') {
-      url = BaseClient.parseURL(url);
-    }
+    const { url } = this.options;
 
     const protocol = url.protocol.slice(0, -1);
 
-    if (!url.port) {
-      url.port = defaultPorts[protocol].toString();
+    if (url.port === '') {
+      url.port = DefaultPorts[protocol].toString();
     }
 
     this.validateURL(url);
 
     return url;
-  }
-
-  static parseURL(url: string) {
-    let parsed = new URL(url);
-
-    // When Deno and browsers parse "mqtt:" URLs, they return "//host:port/path"
-    // in the `pathname` property and leave `host`, `hostname`, and `port`
-    // blank. This works around that by re-parsing as an "http:" URL and then
-    // changing the protocol back to "mqtt:". Node.js doesn't behave like this.
-    if (!parsed.hostname && parsed.pathname.startsWith('//')) {
-      const { protocol } = parsed;
-      parsed = new URL(url.replace(protocol, 'http:'));
-      parsed.protocol = protocol;
-    }
-
-    return parsed;
   }
 
   protected nextPacketId() {

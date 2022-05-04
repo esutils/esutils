@@ -4,7 +4,6 @@ import {
   BaseClientOptions,
 } from '@esutils/mqtt-client';
 
-import { AnyPacket } from '@esutils/mqtt-packet';
 import * as net from 'net';
 
 export interface ClientOptions extends BaseClientOptions {
@@ -27,11 +26,6 @@ export class Client extends BaseClient {
   private socket?: net.Socket;
 
   private socketState?:'connecting' | 'connected' | 'failed';
-
-  // eslint-disable-next-line class-methods-use-this
-  protected getDefaultURL() {
-    return 'mqtt://localhost';
-  }
 
   // eslint-disable-next-line class-methods-use-this
   protected validateURL(url: URL) {
@@ -133,7 +127,17 @@ export class Client extends BaseClient {
 
 async function main() {
   const client = new Client({
-    url: process.env.MQTT_SERVER_URL,
+    url: {
+      origin: 'null',
+      protocol: 'mqtt:',
+      username: '',
+      password: '',
+      hostname: 'emqx-test.growlogin.net',
+      pathname: '',
+      search: '',
+      hash: '',
+      port: '',
+    },
     utf8Encoder,
     username: process.env.MQTT_USERNAME,
     password: Buffer.from(process.env.MQTT_PASSWORD ?? ''),
