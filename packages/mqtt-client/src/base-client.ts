@@ -293,13 +293,17 @@ export abstract class BaseClient {
 
   public async publish(
     topic: string,
-    payload: any,
+    payloadIn: string | Uint8Array,
     options?: PublishOptions,
   ): Promise<void> {
     const dup = (options && options.dup) || false;
     const qos = (options && options.qos) || 0;
     const retain = (options && options.retain) || false;
     const id = qos > 0 ? this.nextPacketId() : 0;
+    let payload = payloadIn;
+    if (typeof payload === 'string') {
+      payload = this.utf8Encoder.encode(payload);
+    }
 
     const packet: IPublishPacket = {
       cmd: 'publish',
