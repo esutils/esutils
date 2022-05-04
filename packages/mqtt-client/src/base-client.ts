@@ -646,7 +646,7 @@ export abstract class BaseClient {
 
       this.url = this.getURL();
 
-      this.log(`opening connection to ${this.url}`);
+      this.log(`opening connection to ${JSON.stringify(this.url)}`);
 
       await this.open(this.url);
 
@@ -808,7 +808,7 @@ export abstract class BaseClient {
         break;
       case 'pingresp':
         // TODO:
-        console.log(`recv ping resp ${Date.now()}`);
+        this.log(`recv ping resp ${Date.now()}`);
         break;
       default:
         throw new Error(`Not supported ${packet.cmd}`);
