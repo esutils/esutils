@@ -118,6 +118,7 @@
     "packages/delay/**/*.mjs",
     "packages/delay/**/*.cjs",
     "packages/delay/**/*.ts",
+    "packages/dns-packet/**/*.ts",
     "packages/empty/**/*.ts",
     "packages/invert/**/*.ts",
     "packages/mqtt-client/**/*.ts",

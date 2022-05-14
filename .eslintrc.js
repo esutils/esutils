@@ -24,6 +24,7 @@ module.exports = {
           path.join(__dirname, './packages/async-semaphore'),
           path.join(__dirname, './packages/deferred'),
           path.join(__dirname, './packages/delay'),
+          path.join(__dirname, './packages/dns-packet'),
           path.join(__dirname, './packages/empty'),
           path.join(__dirname, './packages/invert'),
           path.join(__dirname, './packages/mqtt-client'),

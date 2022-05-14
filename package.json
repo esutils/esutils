@@ -10,6 +10,7 @@
     "packages/async-semaphore",
     "packages/deferred",
     "packages/delay",
+    "packages/dns-packet",
     "packages/empty",
     "packages/invert",
     "packages/mqtt-client",

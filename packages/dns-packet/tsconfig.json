@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "paths": {
+      "@esutils/dns-packet": [
+        "./src/index.ts"
+      ]
+    }
+  }
+}
