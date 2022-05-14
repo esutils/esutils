@@ -1,1 +1,1 @@
-export { hello } from './dns-packet';
+export * from './dns-packet';
