@@ -20,7 +20,7 @@ export class AsyncSemaphore {
     this.count = count;
   }
 
-  public async acquire(first: boolean = false): Promise<void> {
+  public acquire(first: boolean = false): Promise<void> {
     if (this.tryAcquire()) {
       return Promise.resolve();
     }
@@ -56,7 +56,7 @@ export class AsyncSemaphore {
     return ret;
   }
 
-  public async release(first: boolean = false): Promise<void> {
+  public release(first: boolean = false): Promise<void> {
     /* never less than zero */
     if (this.tryRelease()) {
       return Promise.resolve();
