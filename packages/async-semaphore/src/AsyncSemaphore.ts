@@ -3,18 +3,20 @@
  *
  */
 
- type PromiseResolveFunction<T> = (value: T | PromiseLike<T>) => void;
+type PromiseResolveFunction<T> = (value: T | PromiseLike<T>) => void;
 
 export class AsyncSemaphore {
-  private readonly count: number;
+  public readonly count: number;
 
-  private n: number = 0;
+  public n: number = 0;
 
-  private acquireFifo: PromiseResolveFunction<void>[] = [];
+  private acquireFifo: PromiseResolveFunction<void>[];
 
-  private releaseFifo: PromiseResolveFunction<void>[] = [];
+  private releaseFifo: PromiseResolveFunction<void>[];
 
   public constructor(count: number) {
+    this.acquireFifo = [];
+    this.releaseFifo = [];
     this.count = count;
   }
 
