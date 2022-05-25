@@ -18,7 +18,8 @@ function updateDomains(domains: Record<string, number>, filePath: string) {
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split(/\r\n|\n\r|\n|\r/);
   for (let i = 0; i < lines.length; i += 1) {
-    domains[lines[i]] = 1;
+    const line = lines[i].trim();
+    if (line.length > 0) { domains[line] = 1; }
   }
 }
 
@@ -105,11 +106,12 @@ function getDnsList(domain: string): DnsServerItem[] {
   const domainItems = domain.split('.');
   for (let i = domainItems.length - 1; i >= 0; i -= 1) {
     const subDomain = domainItems.slice(i).join('.');
-    if (Object.hasOwn(domainsInfo.mainDomains, subDomain)) {
+    // Support matching both python.org and .python.org
+    if (Object.hasOwn(domainsInfo.mainDomains, subDomain) || Object.hasOwn(domainsInfo.mainDomains, `.${subDomain}`)) {
       return DnsServerListMain;
     }
 
-    if (Object.hasOwn(domainsInfo.auxiliaryDomains, subDomain)) {
+    if (Object.hasOwn(domainsInfo.auxiliaryDomains, subDomain) || Object.hasOwn(domainsInfo.auxiliaryDomains, `.${subDomain}`)) {
       return DnsServerListAuxiliary;
     }
   }
