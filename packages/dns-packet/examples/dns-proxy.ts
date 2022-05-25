@@ -102,20 +102,27 @@ function parseArgs(argv: string[]) {
 
 const domainsInfo = parseArgs(process.argv);
 
-function getDnsList(domain: string): DnsServerItem[] {
-  const domainItems = domain.split('.');
+function checkDomains(domains: Record<string, number>, domainItems: string[]) {
   for (let i = domainItems.length - 1; i >= 0; i -= 1) {
     const subDomain = domainItems.slice(i).join('.');
     // Support matching both python.org and .python.org
-    if (Object.hasOwn(domainsInfo.mainDomains, subDomain) || Object.hasOwn(domainsInfo.mainDomains, `.${subDomain}`)) {
-      return DnsServerListMain;
-    }
-
-    if (Object.hasOwn(domainsInfo.auxiliaryDomains, subDomain) || Object.hasOwn(domainsInfo.auxiliaryDomains, `.${subDomain}`)) {
-      return DnsServerListAuxiliary;
+    if (Object.hasOwn(domains, subDomain) || Object.hasOwn(domains, `.${subDomain}`)) {
+      return true;
     }
   }
 
+  return false;
+}
+
+function getDnsList(domain: string): DnsServerItem[] {
+  const domainItems = domain.split('.');
+  // main domain have higher priority
+  if (checkDomains(domainsInfo.mainDomains, domainItems)) {
+    return DnsServerListMain;
+  }
+  if (checkDomains(domainsInfo.auxiliaryDomains, domainItems)) {
+    return DnsServerListAuxiliary;
+  }
   return DnsServerListDefault;
 }
 
