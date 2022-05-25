@@ -32,6 +32,7 @@ module.exports = {
         ],
       },
     ],
+    "no-param-reassign": ["error", { "props": false }],
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-underscore-dangle': [
       'error',

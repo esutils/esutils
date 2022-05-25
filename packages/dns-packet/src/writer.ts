@@ -21,6 +21,12 @@ export class BufferWriter {
     }
   }
 
+  update(offset: number, d: number, size:number) {
+    for (let i = 0; i < size; i += 1) {
+      this.buffer[offset + i] = (d & (2 ** (size - i - 1)) ? 1 : 0);
+    }
+  }
+
   /**
    * [writeBuffer description]
    * @param {[type]} b [description]
