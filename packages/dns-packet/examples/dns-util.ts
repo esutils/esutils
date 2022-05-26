@@ -28,6 +28,7 @@ export async function queryDNS(
   let clientClosed = false;
   let clientRejected = false;
   let dnsResolved = false;
+  const { name } = questions[0];
   return new Promise<QueryDnsResult>((resolve, reject) => {
     function done(timer: NodeJS.Timeout) {
       clearTimeout(timer);
@@ -44,12 +45,16 @@ export async function queryDNS(
     }
     const timer = setTimeout(() => {
       done(timer);
-      raiseError(new Error('request timedout'));
+      raiseError(new Error(`request timedout for ${name}`));
     }, 10000);
     client.once('message', (message) => {
       dnsResolved = true;
       done(timer);
       const response = Packet.decode(message, decodeResponseDefault);
+      if (response.answers.length === 0) {
+        raiseError(new Error(`no answer for ${name}`));
+        return;
+      }
       resolve({
         ip: dnsServerIp,
         packet: response,
