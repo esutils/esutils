@@ -1,6 +1,6 @@
 {
   "name": "@esutils/dns-packet",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -24,9 +24,10 @@
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "watch": "tsc -w -p tsconfig.cjs.json",
     "pretest": "yarn run build",
-    "prepublishOnly": "yarn run build",
+    "prepublishOnly": "yarn run build && yarn webpack",
     "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.ts"
   },
+  "types": "./src/index.ts",
   "main": "./dist/cjs/index.js",
   "module": "./dist/mjs/index.js",
   "exports": {
