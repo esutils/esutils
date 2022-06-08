@@ -10,9 +10,22 @@ yarn webpack
 ## Running dns-proxy
 
 ```powershell
+yarn run webpack
 $env:DNS_PORT="553"
-node dist-webpack/dns-proxy.js --main examples/domain-list-main.txt --main examples/domain-list-main.txt --auxiliary examples/domain-list-auxiliary.txt
-yarn ts-node examples/dns-proxy.ts --main examples/domain-list-main.txt --main examples/domain-list-main.txt --auxiliary examples/domain-list-auxiliary.txt
+node dist-webpack/dns-proxy.js `
+--dns main 114.114.114.114 `
+--dns main 223.5.5.5 `
+--dns main 180.76.76.76 `
+--dns auxiliary 1.1.1.1 `
+--dns auxiliary 1.1.1.2 `
+--dns default 114.114.114.114 `
+--dns default 223.5.5.5 `
+--dns default 180.76.76.76 `
+--domain-list default examples/domain-list-main.txt `
+--domain-list main examples/domain-list-main.txt `
+--domain-list auxiliary examples/domain-list-auxiliary.txt `
+--log auxiliary dist-webpack/auxiliary.log
+
 ```
 
 Under Ubuntu
@@ -21,18 +34,18 @@ Under Ubuntu
 sudo /sbin/setcap 'cap_net_bind_service=ep' `which node`
 node dist-webpack/dns-proxy.js  \
 yarn ts-node examples/dns-proxy.ts \
---main-dns 114.114.114.114 \
---main-dns 223.5.5.5 \
---main-dns 180.76.76.76 \
---auxiliary-dns 1.1.1.1 \
---auxiliary-dns 1.1.1.2 \
---default-dns 114.114.114.114 \
---default-dns 223.5.5.5 \
---default-dns 180.76.76.76 \
---main examples/domain-list-main.txt \
---main examples/domain-list-main.txt \
---auxiliary examples/domain-list-auxiliary.txt \
---auxiliary-log dist-webpack/auxiliary.log
+--dns main 114.114.114.114 \
+--dns main 223.5.5.5 \
+--dns main 180.76.76.76 \
+--dns auxiliary 1.1.1.1 \
+--dns auxiliary 1.1.1.2 \
+--dns default 114.114.114.114 \
+--dns default 223.5.5.5 \
+--dns default 180.76.76.76 \
+--domain-list main examples/domain-list-main.txt \
+--domain-list main examples/domain-list-main.txt \
+--domain-list auxiliary examples/domain-list-auxiliary.txt \
+--log auxiliary dist-webpack/auxiliary.log
 
 dig baidu.com @127.0.0.1
 dig mirrors.tuna.tsinghua.edu.cn @127.0.0.1

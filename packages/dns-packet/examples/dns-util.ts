@@ -52,7 +52,8 @@ export async function queryDNS(
       done(timer);
       const response = Packet.decode(message, decodeResponseDefault);
       if (response.answers.length === 0) {
-        raiseError(new Error(`no answer for ${name}`));
+        // TODO: Check the question, sometimes the answerws may need to be 0
+        raiseError(new Error(`no answer for ${name} from ${dnsServerIp}:${port}`));
         return;
       }
       resolve({

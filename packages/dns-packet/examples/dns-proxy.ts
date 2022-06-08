@@ -4,87 +4,79 @@ import * as fs from 'fs';
 import {
   decodeResponseDefault,
   DnsPacket,
+  DnsResponse,
   DnsResponseAddress,
   encodeResponseDefault,
   Packet,
   TYPE,
 } from '@esutils/dns-packet';
 
-import { DnsServerItem, queryMultipleDNS } from './dns-util';
+import { queryMultipleDNS } from './dns-util';
+import { updateDomains, checkDomains, DnsServerInfo } from './dns-proxy-utils';
 
 const DnsPort = parseInt(process.env.DNS_PORT ?? '53', 10);
-
-function updateDomains(domains: Record<string, number>, filePath: string) {
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const lines = content.split(/\r\n|\n\r|\n|\r/);
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i].trim();
-    if (line.length > 0) { domains[line] = 1; }
-  }
-}
-
-const DnsServerListMain: DnsServerItem[] = [];
-
-const DnsServerListAuxiliary: DnsServerItem[] = [];
-
-const DnsServerListDefault: DnsServerItem[] = [];
 
 const HelpInfo = `
 --help Print the help
   -?
   -h
 
---main <file> The file path of domain list that pass through main dns server;
-              Can specify multiple times
---main-log <file> The file path to record main dns query, optional
---main-dns <ip> The ip of main dns server, Can specify multiple times
-
---auxiliary <file> The file path of domain list that pass through auxiliary dns server;
-                   Can specify multiple times
---auxiliary-log <file> The file path to record auxiliary dns query, optional
---auxiliary-dns <ip> The ip of auxiliary dns server, Can specify multiple times
-
---default-dns <ip> The ip of default dns server, Can specify multiple times
+--domain-list <tag> <file>
+  Can specify multiple times, the priority are depends on it's appear time
+    <tag> one of 'main' 'auxiliary' 'default'
+    <file> The file path of domain list that pass through main dns server;
+--log <tag> <file>
+  Can specify multiple times
+    <tag> one of 'main' 'auxiliary' 'default'
+    <file> The file path to record main dns query
+--dns <tag> <ip>
+  Can specify multiple times
+    <tag> one of 'main' 'auxiliary' 'default'
+    <ip> The ip of main dns server
 `;
 
+interface DomainList {
+  domains: Record<string, boolean | string>
+  tag: string
+}
+
+const AllDomainList: DomainList[] = [];
+const AllDnsServerInfo: Record<string, DnsServerInfo> = {};
+
 function parseArgs(argv: string[]) {
-  const mainDomains = {};
-  const auxiliaryDomains = {};
-  let mainLog: string | undefined;
-  let auxiliaryLog: string | undefined;
   let hasHelp = false;
   for (let i = 1; i < argv.length; i += 1) {
     const argi = argv[i];
     if (argi === '--help' || argi === '-h' || argi === '-?') {
       hasHelp = true;
       break;
-    } else if (i < argv.length - 1) {
-      const argp = argv[i + 1];
-      if (argi === '--main') {
-        updateDomains(mainDomains, argp);
-        i += 1;
-      } else if (argi === '--auxiliary') {
-        updateDomains(auxiliaryDomains, argp);
-        i += 1;
-      } else if (argi === '--main-dns') {
-        DnsServerListMain.push({
-          ip: argp,
-          port: 53,
+    } else if (i < argv.length - 2) {
+      const argt = argv[i + 1];
+      const argp = argv[i + 2];
+      if (argi === '--domain-list') {
+        const domains = {};
+        updateDomains(domains, argp);
+        AllDomainList.push({
+          tag: argt,
+          domains,
         });
-      } else if (argi === '--auxiliary-dns') {
-        DnsServerListAuxiliary.push({
-          ip: argp,
-          port: 53,
-        });
-      } else if (argi === '--default-dns') {
-        DnsServerListDefault.push({
-          ip: argp,
-          port: 53,
-        });
-      } else if (argi === '--main-log') {
-        mainLog = argp;
-      } else if (argi === '--auxiliary-log') {
-        auxiliaryLog = argp;
+        i += 2;
+      } else if (argi === '--log' || argi === '--dns') {
+        if (!Object.hasOwn(AllDnsServerInfo, argt)) {
+          AllDnsServerInfo[argt] = {
+            tag: argt,
+            dnsList: [],
+          };
+        }
+        if (argi === '--log') {
+          AllDnsServerInfo[argt]!.log = argp;
+        } else {
+          AllDnsServerInfo[argt]!.dnsList.push({
+            ip: argp,
+            port: 53,
+          });
+        }
+        i += 2;
       }
     }
   }
@@ -92,38 +84,30 @@ function parseArgs(argv: string[]) {
     console.log(HelpInfo);
     process.exit(0);
   }
-  return {
-    mainDomains,
-    mainLog,
-    auxiliaryDomains,
-    auxiliaryLog,
-  };
 }
 
-const domainsInfo = parseArgs(process.argv);
+parseArgs(process.argv);
 
-function checkDomains(domains: Record<string, number>, domainItems: string[]) {
-  for (let i = domainItems.length - 1; i >= 0; i -= 1) {
-    const subDomain = domainItems.slice(i).join('.');
-    // Support matching both python.org and .python.org
-    if (Object.hasOwn(domains, subDomain) || Object.hasOwn(domains, `.${subDomain}`)) {
-      return true;
+interface DnsServerInfoFound {
+  resolved: boolean | string
+  server: DnsServerInfo
+}
+
+function getDnsServerInfo(domain: string): DnsServerInfoFound {
+  const domainItems = domain.split('.');
+  for (let i = 0; i < AllDomainList.length; i += 1) {
+    const resolved = checkDomains(AllDomainList[i].domains, domainItems);
+    if (resolved) {
+      return {
+        resolved,
+        server: AllDnsServerInfo[AllDomainList[i].tag],
+      };
     }
   }
-
-  return false;
-}
-
-function getDnsList(domain: string): DnsServerItem[] {
-  const domainItems = domain.split('.');
-  // main domain have higher priority
-  if (checkDomains(domainsInfo.mainDomains, domainItems)) {
-    return DnsServerListMain;
-  }
-  if (checkDomains(domainsInfo.auxiliaryDomains, domainItems)) {
-    return DnsServerListAuxiliary;
-  }
-  return DnsServerListDefault;
+  return {
+    resolved: true,
+    server: AllDnsServerInfo.default,
+  };
 }
 
 async function startDnsServer() {
@@ -134,14 +118,14 @@ async function startDnsServer() {
     server.close();
   });
 
-  // emits on new datagram msg
-  let mainLogFile: fs.promises.FileHandle | undefined;
-  if (domainsInfo.mainLog) {
-    mainLogFile = await fs.promises.open(domainsInfo.mainLog, 'a');
-  }
-  let auxiliaryLogFile: fs.promises.FileHandle | undefined;
-  if (domainsInfo.auxiliaryLog) {
-    auxiliaryLogFile = await fs.promises.open(domainsInfo.auxiliaryLog, 'a');
+  const tags = Object.keys(AllDnsServerInfo);
+  for (let i = 0; i < tags.length; i += 1) {
+    const tag = tags[i];
+    const serverInfo = AllDnsServerInfo[tag];
+    if (serverInfo.log) {
+      // eslint-disable-next-line no-await-in-loop
+      serverInfo.logFile = await fs.promises.open(serverInfo.log, 'a');
+    }
   }
   server.on('message', async (message, rinfo) => {
     const request = Packet.decode(message, decodeResponseDefault);
@@ -159,26 +143,35 @@ async function startDnsServer() {
     if (questions.length === 1) {
       try {
         const { name } = questions[0]!;
-        const dnsList = getDnsList(name);
-        const parallelResponse = await queryMultipleDNS(dnsList, questions);
+        const dnsServer = getDnsServerInfo(name);
+        const parallelResponse = await queryMultipleDNS(dnsServer.server.dnsList, questions);
         response.header = parallelResponse.packet.header;
         response.header.id = request.header.id;
         response.questions = parallelResponse.packet.questions;
         response.answers = parallelResponse.packet.answers;
         response.authorities = parallelResponse.packet.authorities;
         response.additionals = parallelResponse.packet.additionals;
+        const answersFiltered: DnsResponse[] = [];
+        let answersFilteredFound = false;
         for (let i = 0; i < response.answers.length; i += 1) {
           const answer = response.answers[i];
           if (answer.type === TYPE.A || answer.type === TYPE.AAAA) {
             const answerIp = answer as DnsResponseAddress;
-            const logItem = `${name} ${answerIp.address}\n`;
-            if (mainLogFile && dnsList === DnsServerListMain) {
-              mainLogFile.write(logItem);
+            const logItem = `${name} ${answerIp.address} ${parallelResponse.ip}\n`;
+            if (dnsServer.server.logFile) {
+              dnsServer.server.logFile.write(logItem);
             }
-            if (auxiliaryLogFile && dnsList === DnsServerListAuxiliary) {
-              auxiliaryLogFile.write(logItem);
+            if (typeof dnsServer.resolved === 'string' && dnsServer.resolved === answerIp.address) {
+              answersFiltered.push(answer);
+              answersFilteredFound = true;
             }
+          } else {
+            answersFiltered.push(answer);
           }
+        }
+        if (answersFilteredFound) {
+          console.log(`Overrided for ${name} from ${parallelResponse.ip}`);
+          response.answers = answersFiltered;
         }
       } catch (error) {
         if (error instanceof AggregateError) {
@@ -204,11 +197,12 @@ async function startDnsServer() {
 
   // emits after the socket is closed using socket.close();
   server.on('close', () => {
-    if (mainLogFile) {
-      mainLogFile.close();
-    }
-    if (auxiliaryLogFile) {
-      auxiliaryLogFile.close();
+    for (let i = 0; i < tags.length; i += 1) {
+      const tag = tags[i];
+      const serverInfo = AllDnsServerInfo[tag];
+      if (serverInfo.logFile) {
+        serverInfo.logFile.close();
+      }
     }
     console.log('Socket is closed !');
   });
