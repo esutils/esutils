@@ -6,6 +6,15 @@
     "type": "git",
     "url": "https://github.com/esutils/esutils.git"
   },
+  "scripts": {
+    "build": "yarn run build-async-semaphore && yarn run build-deferred && yarn run build-delay && yarn run build-invert && yarn run build-dns-packet && yarn run build-invert && yarn run build-mqtt-packet",
+    "build-async-semaphore": "cd packages/async-semaphore && yarn build",
+    "build-deferred": "cd packages/deferred && yarn build",
+    "build-delay": "cd packages/delay && yarn build",
+    "build-dns-packet": "cd packages/dns-packet && yarn build",
+    "build-invert": "cd packages/invert && yarn build",
+    "build-mqtt-packet": "cd packages/mqtt-packet && yarn build"
+  },
   "workspaces": [
     "packages/async-semaphore",
     "packages/deferred",
