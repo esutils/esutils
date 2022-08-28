@@ -51,10 +51,15 @@ export async function queryDNS(
       dnsResolved = true;
       done(timer);
       const response = Packet.decode(message, decodeResponseDefault);
-      if (response.answers.length === 0) {
+      if (response.answers.length === 0 && response.authorities.length == 0) {
         // TODO: Check the question, sometimes the answerws may need to be 0
-        raiseError(new Error(`no answer for ${name} from ${dnsServerIp}:${port}`));
+        const msg = `no answer for ${name} from ${dnsServerIp}:${port}`;
+        console.error(msg);
+        raiseError(new Error(msg));
         return;
+      }
+      if (response.errors.length > 0) {
+        console.error(response.errors);
       }
       resolve({
         ip: dnsServerIp,

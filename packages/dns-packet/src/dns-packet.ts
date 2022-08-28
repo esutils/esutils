@@ -666,6 +666,9 @@ export function encodeResponseDefault(writer: BufferWriter, info: DnsBasic) {
     case TYPE.PTR:
       ResourceCNAME.encode(writer, info as DnsResponseCNAME);
       break;
+    case TYPE.SOA:
+      ResourceSOA.encode(writer, info as DnsResponseSOA);
+      break;
     default:
       throw new Error(`Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`);
   }
@@ -683,6 +686,9 @@ export function decodeResponseDefault(reader: BufferReader, info: DnsBasic) {
     case TYPE.CNAME:
     case TYPE.PTR:
       ResourceCNAME.decode(reader, length, info as DnsResponseCNAME);
+      break;
+    case TYPE.SOA:
+      ResourceSOA.decode(reader, length, info as DnsResponseSOA);
       break;
     default: {
       for (let lengthToRead = length; lengthToRead > 0; lengthToRead -= 1) {
