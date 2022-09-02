@@ -937,29 +937,27 @@ export abstract class BaseClient {
       packet.messageId,
     );
 
-    // TODO: verify returnCodes length matches subscriptions.length
-
-    if (unackSubs !== undefined) {
-      this.unacknowledgedSubscribes.delete(packet.messageId);
-
-      for (let i = 0; i < unackSubs.subscriptions.length; i += 1) {
-        const sub = unackSubs.subscriptions[i];
-        sub.state = 'acknowledged';
-        sub.granted = packet.granted[i];
-        i += 1;
-
-        const deferred = this.unresolvedSubscribes.get(sub.topic);
-
-        if (deferred) {
-          this.unresolvedSubscribes.delete(sub.topic);
-
-          deferred.resolve(packet);
-        }
-      }
-    } else {
+    if (unackSubs === undefined) {
       throw new Error(
         `received suback packet with unrecognized id ${packet.messageId}`,
       );
+    }
+    this.unacknowledgedSubscribes.delete(packet.messageId);
+
+    // TODO: verify returnCodes length matches subscriptions.length
+    for (let i = 0; i < unackSubs.subscriptions.length; i += 1) {
+      const sub = unackSubs.subscriptions[i];
+      sub.state = 'acknowledged';
+      sub.granted = packet.granted[i];
+      i += 1;
+
+      const deferred = this.unresolvedSubscribes.get(sub.topic);
+
+      if (deferred) {
+        this.unresolvedSubscribes.delete(sub.topic);
+
+        deferred.resolve(packet);
+      }
     }
   }
 
