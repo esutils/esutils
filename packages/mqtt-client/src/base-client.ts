@@ -944,7 +944,12 @@ export abstract class BaseClient {
     }
     this.unacknowledgedSubscribes.delete(packet.messageId);
 
-    // TODO: verify returnCodes length matches subscriptions.length
+    // verify returnCodes length matches subscriptions.length
+    if (unackSubs.subscriptions.length !== packet.granted.length) {
+      throw new Error(
+        `received suback packet returnCodes length:${packet.granted.length} !== ${unackSubs.subscriptions.length}`,
+      );
+    }
     for (let i = 0; i < unackSubs.subscriptions.length; i += 1) {
       const sub = unackSubs.subscriptions[i];
       sub.state = 'acknowledged';
