@@ -208,6 +208,8 @@ export abstract class BaseClient {
 
   keepalive: number;
 
+  connectTimeout: number;
+
   connectionState: ConnectionState = 'offline';
 
   everConnected: boolean = false;
@@ -280,6 +282,7 @@ export abstract class BaseClient {
       ? this.options.keepalive
       : defaultKeepalive;
 
+    this.connectTimeout = this.options.connectTimeout ?? defaultConnectTimeout;
     this.incomingStore = this.options.incomingStore || new IncomingMemoryStore();
     this.outgoingStore = this.options.outgoingStore || new OutgoingMemoryStore();
 
@@ -987,7 +990,7 @@ export abstract class BaseClient {
       () => {
         this.connectTimedOut();
       },
-      this.options.connectTimeout || defaultConnectTimeout,
+      this.connectTimeout,
     );
   }
 
