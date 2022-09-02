@@ -684,7 +684,7 @@ export abstract class BaseClient {
   }
 
   // This gets called when the connection is fully established (after receiving the CONNACK packet).
-  protected async connectionEstablished(connackPacket: IConnackPacket) {
+  protected connectionEstablished(connackPacket: IConnackPacket) {
     if (this.options.clean !== false || !connackPacket.sessionPresent) {
       for (let i = 0; i < this.subscriptions.length; i += 1) {
         const sub = this.subscriptions[i];
@@ -695,12 +695,6 @@ export abstract class BaseClient {
         }
       }
     }
-
-    await this.flushSubscriptions();
-    await this.flushUnsubscriptions();
-    await this.flushUnacknowledgedPublishes();
-    await this.flushQueuedPublishes();
-
     if (this.unresolvedConnect) {
       this.log('resolving initial connect');
 
@@ -819,7 +813,7 @@ export abstract class BaseClient {
     this.log('protocolViolation', msg);
   }
 
-  protected handleConnack(packet: IConnackPacket) {
+  protected async handleConnack(packet: IConnackPacket) {
     switch (this.connectionState) {
       case 'connecting':
         break;
@@ -829,13 +823,15 @@ export abstract class BaseClient {
         );
     }
 
+    this.everConnected = true;
+    this.stopConnectTimer();
+    this.connectionEstablished(packet);
     this.changeState('connected');
 
-    this.everConnected = true;
-
-    this.stopConnectTimer();
-
-    this.connectionEstablished(packet);
+    await this.flushSubscriptions();
+    await this.flushUnsubscriptions();
+    await this.flushUnacknowledgedPublishes();
+    await this.flushQueuedPublishes();
   }
 
   protected async handlePublish(packet: IPublishPacket): Promise<void> {
