@@ -247,7 +247,7 @@ export abstract class BaseClient {
   Deferred<IUnsubackPacket | undefined>
   >();
 
-  private unacknowledgedSubscribes = new Map<
+  protected unacknowledgedSubscribes = new Map<
   number,
   {
     subscriptions: Subscription[];
