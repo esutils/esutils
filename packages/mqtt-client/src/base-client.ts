@@ -220,7 +220,7 @@ export abstract class BaseClient {
 
   private lastPacketId: number = 0;
 
-  private lastPacketTime: Date | undefined;
+  private lastPacketTime: number;
 
   private buffer?: Uint8Array;
 
@@ -282,6 +282,8 @@ export abstract class BaseClient {
 
     this.incomingStore = this.options.incomingStore || new IncomingMemoryStore();
     this.outgoingStore = this.options.outgoingStore || new OutgoingMemoryStore();
+
+    this.lastPacketTime = Date.now();
 
     this.log = this.options.logger || (() => {});
   }
@@ -1096,7 +1098,7 @@ export abstract class BaseClient {
 
     // This method doesn't get called until after sending the connect packet
     // so this.lastPacketTime should have a value.
-    const elapsed = Date.now() - this.lastPacketTime!.getTime();
+    const elapsed = Date.now() - this.lastPacketTime;
     const timeout = this.keepalive * 1000 - elapsed;
 
     this.startTimer('keepalive', () => this.sendKeepalive(), timeout);
@@ -1110,7 +1112,7 @@ export abstract class BaseClient {
 
   protected async sendKeepalive() {
     if (this.connectionState === 'connected') {
-      const elapsed = Date.now() - this.lastPacketTime!.getTime();
+      const elapsed = Date.now() - this.lastPacketTime;
       const timeout = this.keepalive * 1000;
 
       if (elapsed >= timeout) {
@@ -1232,7 +1234,7 @@ export abstract class BaseClient {
 
     await this.write(bytes);
 
-    this.lastPacketTime = new Date();
+    this.lastPacketTime = Date.now();
   }
 
   public on(eventName: string, listener: Function) {
