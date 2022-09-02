@@ -646,6 +646,10 @@ export abstract class BaseClient {
     return encode(packet, this.utf8Encoder, { protocolVersion: this.protocolVersion });
   }
 
+  protected openConnectionInit() {
+    this.buffer = undefined;
+  }
+
   // This gets called from connect and when reconnecting.
   protected async openConnection() {
     try {
@@ -654,7 +658,7 @@ export abstract class BaseClient {
       this.url = this.getURL();
 
       this.log(`opening connection to ${JSON.stringify(this.url)}`);
-
+      this.openConnectionInit();
       await this.open(this.url);
 
       await this.send({
