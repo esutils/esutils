@@ -738,7 +738,9 @@ export abstract class BaseClient {
 
       buffer = newBuffer;
     } else {
-      buffer = bytes;
+      const newBytes = new Uint8Array(bytes.length);
+      newBytes.set(bytes);
+      buffer = newBytes;
     }
     const opts = { protocolVersion: this.protocolVersion };
 
