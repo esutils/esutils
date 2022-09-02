@@ -656,6 +656,8 @@ export abstract class BaseClient {
 
   protected openConnectionInit() {
     this.buffer = undefined;
+    this.unacknowledgedSubscribes.clear();
+    this.unacknowledgedUnsubscribes.clear();
   }
 
   // This gets called from connect and when reconnecting.
