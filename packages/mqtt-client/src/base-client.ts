@@ -50,6 +50,7 @@ export interface BaseClientOptions {
   keepalive?: number;
   password?: Uint8Array;
   connectTimeout?: number;
+  pingrespTimeout?: number;
   connect?: boolean | RetryOptions;
   reconnect?: boolean | RetryOptions;
   incomingStore?: IncomingStore;
@@ -172,6 +173,7 @@ export const DefaultPorts: { [protocol: string]: number } = {
 const defaultClientIdPrefix = 'esutils_mqtt_client';
 const defaultKeepalive = 60;
 const defaultConnectTimeout = 10 * 1000;
+const defaultPingrespTimeout = 5 * 1000;
 const defaultConnectOptions = {
   retries: Infinity,
   minDelay: 1000,
@@ -209,6 +211,7 @@ export abstract class BaseClient {
   keepalive: number;
 
   connectTimeout: number;
+  pingrespTimeout: number;
 
   connectionState: ConnectionState = 'offline';
 
@@ -283,6 +286,8 @@ export abstract class BaseClient {
       : defaultKeepalive;
 
     this.connectTimeout = this.options.connectTimeout ?? defaultConnectTimeout;
+    this.pingrespTimeout = this.options.pingrespTimeout ?? defaultPingrespTimeout;
+
     this.incomingStore = this.options.incomingStore || new IncomingMemoryStore();
     this.outgoingStore = this.options.outgoingStore || new OutgoingMemoryStore();
 
@@ -732,7 +737,9 @@ export abstract class BaseClient {
   protected bytesReceived(bytes: Uint8Array) {
     let buffer: Uint8Array | undefined;
     const oldBuffer = this.buffer;
-
+    if (bytes.length > 0) {
+      this.stopWaitDataTimer();
+    }
     if (oldBuffer) {
       const newBuffer = new Uint8Array(oldBuffer.length + bytes.length);
 
@@ -806,8 +813,7 @@ export abstract class BaseClient {
         this.handleUnsuback(packet);
         break;
       case 'pingresp':
-        // TODO:
-        this.log(`recv ping resp ${Date.now()}`);
+        this.stopPingrespTimer();
         break;
       default:
         throw new Error(`Not supported ${packet.cmd}`);
@@ -1115,6 +1121,30 @@ export abstract class BaseClient {
     }
   }
 
+  protected startPingrespTimer() {
+    this.startTimer('pingresp', () => {
+      this.startWaitDataTimer();
+    }, this.pingrespTimeout);
+  }
+
+  protected stopPingrespTimer() {
+    if (this.timerExists('pingresp')) {
+      this.stopTimer('pingresp');
+    }
+  }
+
+  protected startWaitDataTimer() {
+    this.startTimer('waitdata', () => {
+      this.doDisconnect();
+    }, this.pingrespTimeout);
+  }
+
+  protected stopWaitDataTimer() {
+    if (this.timerExists('waitdata')) {
+      this.stopTimer('waitdata');
+    }
+  }
+
   protected async sendKeepalive() {
     if (this.connectionState === 'connected') {
       const elapsed = Date.now() - this.lastPacketTime;
@@ -1125,7 +1155,7 @@ export abstract class BaseClient {
           cmd: 'pingreq',
         });
 
-        // TODO: need a timer here to disconnect if we don't receive the pingresp
+        this.startPingrespTimer();
       }
 
       this.startKeepaliveTimer();
@@ -1138,6 +1168,8 @@ export abstract class BaseClient {
     this.stopConnectTimer();
     this.stopReconnectTimer();
     this.stopKeepaliveTimer();
+    this.stopPingrespTimer();
+    this.stopWaitDataTimer();
   }
 
   protected startTimer(
