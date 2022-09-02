@@ -188,6 +188,11 @@ const defaultReconnectOptions = {
   random: true,
 };
 
+/**
+ * event list:
+ * changeState
+ * message
+ */
 export abstract class BaseClient {
   options: BaseClientOptions;
 
@@ -721,16 +726,7 @@ export abstract class BaseClient {
     this.stopKeepaliveTimer();
   }
 
-  protected connectionError(error: any) {
-    // TODO: decide what to do with this
-    this.log('connectionError', error);
-  }
-
   protected bytesReceived(bytes: Uint8Array) {
-    this.log('bytes received', bytes);
-
-    this.emit('bytesreceived', bytes);
-
     let buffer: Uint8Array | undefined;
     const oldBuffer = this.buffer;
 
@@ -779,8 +775,6 @@ export abstract class BaseClient {
   }
 
   protected packetReceived(packet: AnyPacket) {
-    this.emit('packetreceive', packet);
-
     switch (packet.cmd) {
       case 'connack':
         this.handleConnack(packet);
@@ -867,7 +861,6 @@ export abstract class BaseClient {
 
       if (emitMessage) {
         this.incomingStore.store(packet.messageId);
-
         this.emit('message', packet.topic, packet.payload, packet);
       }
 
@@ -1185,17 +1178,11 @@ export abstract class BaseClient {
   }
 
   // Utility methods
-
   protected changeState(newState: ConnectionState) {
     const oldState = this.connectionState;
-
     this.connectionState = newState;
-
-    this.log(`connectionState: ${oldState} -> ${newState}`);
-
-    this.emit('statechange', { from: oldState, to: newState });
-
-    this.emit(newState);
+    this.log(`changeState: ${oldState} -> ${newState}`);
+    this.emit('changeState', { from: oldState, to: newState });
   }
 
   protected generateClientId() {
@@ -1241,13 +1228,7 @@ export abstract class BaseClient {
   }
 
   protected async send(packet: AnyPacket) {
-    this.log(`sending ${packet.cmd} packet`, packet);
-
-    this.emit('packetsend', packet);
-
     const bytes = this.encode(packet);
-
-    this.emit('bytessent', bytes);
 
     await this.write(bytes);
 
