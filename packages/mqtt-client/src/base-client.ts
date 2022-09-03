@@ -1128,7 +1128,9 @@ export abstract class BaseClient {
 
   protected startPingrespTimer() {
     this.startTimer('pingresp', () => {
-      this.startWaitDataTimer();
+      if (this.connectionState === 'connected') {
+        this.startWaitDataTimer();
+      }
     }, this.pingrespTimeout);
   }
 
@@ -1141,6 +1143,8 @@ export abstract class BaseClient {
   protected startWaitDataTimer() {
     this.startTimer('waitdata', () => {
       this.doDisconnect();
+      this.reconnectAttempt = 0;
+      this.startReconnectTimer();
     }, this.pingrespTimeout);
   }
 
