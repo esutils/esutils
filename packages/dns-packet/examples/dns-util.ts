@@ -54,7 +54,6 @@ export async function queryDNS(
       if (response.answers.length === 0 && response.authorities.length == 0) {
         // TODO: Check the question, sometimes the answerws may need to be 0
         const msg = `no answer for ${name} from ${dnsServerIp}:${port}`;
-        console.error(msg);
         raiseError(new Error(msg));
         return;
       }

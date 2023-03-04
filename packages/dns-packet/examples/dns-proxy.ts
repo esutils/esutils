@@ -9,7 +9,6 @@ import {
   DnsResponse,
   DnsResponseA,
   DnsResponseAddress,
-  DnsResponseSOA,
   encodeResponseDefault,
   Packet,
   TYPE,
@@ -196,8 +195,17 @@ async function startDnsServer() {
           dnsServer.server.logFile.write(newAnswerLog);
         }
       } catch (error) {
+        let printError = true;
         if (error instanceof AggregateError) {
-          console.log(error.errors);
+          for (let i = 0; i < error.errors.length; i += 1) {
+            const childError = error.errors[i] as Error;
+            if (childError.message.indexOf('request timedout for') < 0) {
+              printError = false;
+            }
+          }
+        }
+        if (printError) {
+          console.log(error);
         }
       }
     }
