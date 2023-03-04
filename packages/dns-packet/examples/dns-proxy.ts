@@ -1,11 +1,15 @@
 import * as udp from 'dgram';
 import * as fs from 'fs';
+import * as net from 'net';
 
 import {
+  CLASS,
   decodeResponseDefault,
   DnsPacket,
   DnsResponse,
+  DnsResponseA,
   DnsResponseAddress,
+  DnsResponseSOA,
   encodeResponseDefault,
   Packet,
   TYPE,
@@ -152,26 +156,44 @@ async function startDnsServer() {
         response.authorities = parallelResponse.packet.authorities;
         response.additionals = parallelResponse.packet.additionals;
         const answersFiltered: DnsResponse[] = [];
-        let answersFilteredFound = false;
+        let newAnswerLog = `${name} ${parallelResponse.ip} addrs:`;
         for (let i = 0; i < response.answers.length; i += 1) {
           const answer = response.answers[i];
           if (answer.type === TYPE.A || answer.type === TYPE.AAAA) {
             const answerIp = answer as DnsResponseAddress;
-            const logItem = `${name} ${answerIp.address} ${parallelResponse.ip}\n`;
-            if (dnsServer.server.logFile) {
-              dnsServer.server.logFile.write(logItem);
-            }
-            if (typeof dnsServer.resolved === 'string' && dnsServer.resolved === answerIp.address) {
+            newAnswerLog = `${newAnswerLog} ${answerIp.address}`;
+            if (dnsServer.resolved === true) {
               answersFiltered.push(answer);
-              answersFilteredFound = true;
             }
           } else {
             answersFiltered.push(answer);
           }
         }
-        if (answersFilteredFound) {
-          console.log(`Overrided for ${name} from ${parallelResponse.ip}`);
-          response.answers = answersFiltered;
+        if (typeof dnsServer.resolved === 'string') {
+          // 39.156.66.10;110.242.68.66
+          const ipList = dnsServer.resolved.split(';');
+          for (let pi = 0; pi < ipList.length; pi += 1) {
+            const ip = ipList[pi];
+            if (net.isIP(ip) > 0) {
+              const addr: DnsResponseA = {
+                name,
+                type: net.isIPv6(ip) ? TYPE.AAAA : TYPE.A,
+                class: CLASS.IN,
+                address: ip,
+                ttl: 300,
+              };
+              answersFiltered.push(addr);
+            }
+          }
+          newAnswerLog = `${newAnswerLog} override with:${dnsServer.resolved}\n`;
+          response.header.rcode = 0;
+        } else {
+          newAnswerLog = `${newAnswerLog}\n`;
+        }
+        response.answers = answersFiltered;
+
+        if (dnsServer.server.logFile) {
+          dnsServer.server.logFile.write(newAnswerLog);
         }
       } catch (error) {
         if (error instanceof AggregateError) {
