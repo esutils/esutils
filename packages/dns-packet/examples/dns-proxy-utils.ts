@@ -27,12 +27,16 @@ export function updateDomains(domains: Record<string, boolean | string>, filePat
 }
 
 export function checkDomains(domains: Record<string, boolean | string>, domainItems: string[]) {
-  for (let i = domainItems.length - 1; i >= 0; i -= 1) {
+  // Support matching both python.org and .python.org
+  const fullDomain = domainItems.join('.');
+  if (Object.hasOwn(domains, fullDomain)) {
+    return domains[fullDomain];
+  }
+  if (Object.hasOwn(domains, `.${fullDomain}`)) {
+    return domains[`.${fullDomain}`];
+  }
+  for (let i = 1; i < domainItems.length; i += 1) {
     const subDomain = domainItems.slice(i).join('.');
-    // Support matching both python.org and .python.org
-    if (Object.hasOwn(domains, subDomain)) {
-      return domains[subDomain];
-    }
     if (Object.hasOwn(domains, `.${subDomain}`)) {
       return domains[`.${subDomain}`];
     }
