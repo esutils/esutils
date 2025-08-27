@@ -55,6 +55,7 @@ export interface BaseClientOptions {
   reconnect?: boolean | RetryOptions;
   incomingStore?: IncomingStore;
   outgoingStore?: OutgoingStore;
+  maxPublishQueue?: number;
   logger?: (msg: string, ...args: unknown[]) => void;
 }
 
@@ -236,6 +237,8 @@ export abstract class BaseClient {
     deferred: Deferred<void>;
   }[] = [];
 
+  private maxPublishQueue: number;
+
   private unresolvedPublishes = new Map<number, Deferred<void>>();
 
   private incomingStore: IncomingStore;
@@ -292,6 +295,7 @@ export abstract class BaseClient {
     this.outgoingStore = this.options.outgoingStore || new OutgoingMemoryStore();
 
     this.lastPacketTime = Date.now();
+    this.maxPublishQueue = this.options.maxPublishQueue ?? 16;
 
     this.log = this.options.logger || (() => {});
   }
@@ -348,7 +352,9 @@ export abstract class BaseClient {
       this.sendPublish(packet, deferred);
     } else {
       this.log('queueing publish');
-
+      if (this.queuedPublishes.length >= this.maxPublishQueue) {
+        this.queuedPublishes.shift();
+      }
       this.queuedPublishes.push({ packet, deferred });
     }
 
