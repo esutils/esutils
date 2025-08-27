@@ -37,6 +37,14 @@ export interface URL {
 
 export type ClientIdFactory = string | (() => string);
 
+export interface BaseConnectOptions {
+  retries: number;
+  minDelay: number;
+  maxDelay: number;
+  factor: number;
+  random: boolean;
+}
+
 export interface BaseClientOptions {
   protocolVersion: ProtocolVersion;
   utf8Encoder: UTF8Encoder;
@@ -51,20 +59,12 @@ export interface BaseClientOptions {
   password?: Uint8Array;
   connectTimeout?: number;
   pingrespTimeout?: number;
-  connect?: boolean | RetryOptions;
-  reconnect?: boolean | RetryOptions;
+  connect?: Partial<BaseConnectOptions>;
+  reconnect?: Partial<BaseConnectOptions>;
   incomingStore?: IncomingStore;
   outgoingStore?: OutgoingStore;
   maxPublishQueue?: number;
   logger?: (msg: string, ...args: unknown[]) => void;
-}
-
-export interface RetryOptions {
-  retries?: number;
-  minDelay?: number;
-  maxDelay?: number;
-  factor?: number;
-  random?: boolean;
 }
 
 export type SubscriptionState =
@@ -175,7 +175,7 @@ const defaultClientIdPrefix = 'esutils_mqtt_client';
 const defaultKeepalive = 60;
 const defaultConnectTimeout = 10 * 1000;
 const defaultPingrespTimeout = 5 * 1000;
-const defaultConnectOptions = {
+const defaultConnectOptions: BaseConnectOptions = {
   retries: Infinity,
   minDelay: 1000,
   maxDelay: 2000,
@@ -183,7 +183,7 @@ const defaultConnectOptions = {
   random: false,
 };
 
-const defaultReconnectOptions = {
+const defaultReconnectOptions: BaseConnectOptions = {
   retries: Infinity,
   minDelay: 1000,
   maxDelay: 60000,
@@ -212,6 +212,7 @@ export abstract class BaseClient {
   keepalive: number;
 
   connectTimeout: number;
+
   pingrespTimeout: number;
 
   connectionState: ConnectionState = 'offline';
@@ -1049,25 +1050,19 @@ export abstract class BaseClient {
   protected startReconnectTimer() {
     const { options } = this;
 
-    let reconnectOptions;
-    let defaultOptions;
+    let connectOptions: Partial<BaseConnectOptions> = {};
+    let defaultOptions: BaseConnectOptions;
 
     if (!this.everConnected) {
-      reconnectOptions = options.connect || {};
+      if (options.connect) connectOptions = options.connect;
       defaultOptions = defaultConnectOptions;
     } else {
-      reconnectOptions = options.reconnect || {};
+      if (options.reconnect) connectOptions = options.reconnect;
       defaultOptions = defaultReconnectOptions;
     }
 
-    if (reconnectOptions === false) {
-      return false;
-    } if (reconnectOptions === true) {
-      reconnectOptions = {};
-    }
-
     const attempt = this.reconnectAttempt;
-    const maxAttempts = reconnectOptions.retries ?? defaultOptions.retries;
+    const maxAttempts = connectOptions.retries ?? defaultOptions.retries;
 
     if (attempt >= maxAttempts) {
       return false;
@@ -1077,10 +1072,10 @@ export abstract class BaseClient {
     // https://dthain.blogspot.com/2009/02/exponential-backoff-in-distributed.html
     // but modified the random part so that the delay will be strictly
     // increasing.
-    const min = reconnectOptions.minDelay ?? defaultOptions.minDelay;
-    const max = reconnectOptions.maxDelay ?? defaultOptions.maxDelay;
-    const factor = reconnectOptions.factor ?? defaultOptions.factor;
-    const random = reconnectOptions.random ?? defaultOptions.random;
+    const min = connectOptions.minDelay ?? defaultOptions.minDelay;
+    const max = connectOptions.maxDelay ?? defaultOptions.maxDelay;
+    const factor = connectOptions.factor ?? defaultOptions.factor;
+    const random = connectOptions.random ?? defaultOptions.random;
 
     // The old way:
     // const randomness = 1 + (random ? Math.random() : 0);
