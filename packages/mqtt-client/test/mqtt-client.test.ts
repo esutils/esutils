@@ -3,8 +3,8 @@ import { Deferred } from '@esutils/deferred';
 import * as net from 'net';
 
 const utf8Encoder = {
-  encode(str: string) {
-    return Buffer.from(str, 'utf8');
+  encode(str: string): Uint8Array {
+    return Buffer.from(str, 'utf8') as Uint8Array;
   },
 };
 
@@ -81,7 +81,7 @@ describe('mqtt client in typescript', () => {
         console.log(msg, ...args);
       },
       username: process.env.MQTT_USERNAME,
-      password: Buffer.from(process.env.MQTT_PASSWORD ?? ''),
+      password: Buffer.from(process.env.MQTT_PASSWORD ?? '') as Uint8Array,
       utf8Decoder,
       protocolVersion: 4,
       clientId: 'mytest',
