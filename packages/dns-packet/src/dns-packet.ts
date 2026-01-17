@@ -33,6 +33,7 @@ export const TYPE = {
   TXT: 0x10,
   AAAA: 0x1c,
   SRV: 0x21,
+  DNAME: 0x27, // https://en.wikipedia.org/wiki/CNAME_record#DNAME_record
   EDNS: 0x29,
   SPF: 0x63,
   AXFR: 0xfc,
@@ -663,6 +664,7 @@ export function encodeResponseDefault(writer: BufferWriter, info: DnsBasic) {
       ResourceAAAA.encode(writer, info as DnsResponseAAAA);
       break;
     case TYPE.CNAME:
+    case TYPE.DNAME:
     case TYPE.PTR:
       ResourceCNAME.encode(writer, info as DnsResponseCNAME);
       break;
@@ -670,7 +672,7 @@ export function encodeResponseDefault(writer: BufferWriter, info: DnsBasic) {
       ResourceSOA.encode(writer, info as DnsResponseSOA);
       break;
     default:
-      throw new Error(`Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`);
+      throw new Error(`encodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`);
   }
 }
 
@@ -684,6 +686,7 @@ export function decodeResponseDefault(reader: BufferReader, info: DnsBasic) {
       ResourceAAAA.decode(reader, length, info as DnsResponseAAAA);
       break;
     case TYPE.CNAME:
+    case TYPE.DNAME:
     case TYPE.PTR:
       ResourceCNAME.decode(reader, length, info as DnsResponseCNAME);
       break;
@@ -694,7 +697,7 @@ export function decodeResponseDefault(reader: BufferReader, info: DnsBasic) {
       for (let lengthToRead = length; lengthToRead > 0; lengthToRead -= 1) {
         reader.read(8);
       }
-      throw new Error(`Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`);
+      throw new Error(`decodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`);
     }
   }
 }

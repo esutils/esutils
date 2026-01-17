@@ -39,8 +39,8 @@ const HelpInfo = `
 `;
 
 interface DomainList {
-  domains: Record<string, boolean | string>
-  tag: string
+  domains: Record<string, boolean | string>;
+  tag: string;
 }
 
 const AllDomainList: DomainList[] = [];
@@ -92,8 +92,8 @@ function parseArgs(argv: string[]) {
 parseArgs(process.argv);
 
 interface DnsServerInfoFound {
-  resolved: boolean | string
-  server: DnsServerInfo
+  resolved: boolean | string;
+  server: DnsServerInfo;
 }
 
 function getDnsServerInfo(domain: string): DnsServerInfoFound {
@@ -147,7 +147,10 @@ async function startDnsServer() {
       try {
         const { name } = questions[0]!;
         const dnsServer = getDnsServerInfo(name);
-        const parallelResponse = await queryMultipleDNS(dnsServer.server.dnsList, questions);
+        const parallelResponse = await queryMultipleDNS(
+          dnsServer.server.dnsList,
+          questions,
+        );
         response.header = parallelResponse.packet.header;
         response.header.id = request.header.id;
         response.questions = parallelResponse.packet.questions;
@@ -195,17 +198,27 @@ async function startDnsServer() {
           dnsServer.server.logFile.write(newAnswerLog);
         }
       } catch (error) {
-        let printError = true;
+        let printError = false;
         if (error instanceof AggregateError) {
+          let requestTimeoutCount = 0;
           for (let i = 0; i < error.errors.length; i += 1) {
             const childError = error.errors[i] as Error;
             if (childError.message.indexOf('request timedout for') < 0) {
-              printError = false;
+              requestTimeoutCount += 1;
             }
           }
+          printError = requestTimeoutCount < error.errors.length;
+        } else {
+          printError = true;
         }
         if (printError) {
-          console.log(error);
+          console.log(`The dns query error:${error}`);
+          if (error instanceof AggregateError) {
+            for (let i = 0; i < error.errors.length; i += 1) {
+              const childError = error.errors[i] as Error;
+              console.log(`The dns query error[${i}]: ${childError}`);
+            }
+          }
         }
       }
     }
