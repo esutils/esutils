@@ -12,9 +12,11 @@ export { BufferWriter } from './writer';
 /**
  * [QUERY_TYPE description]
  * @type {Object}
- * @docs https://tools.ietf.org/html/rfc1035#section-3.2.2
+ * @docs List of DNS record types
+ * https://en.wikipedia.org/wiki/List_of_DNS_record_types
  */
 export const TYPE = {
+  // 3.2.2. TYPE values https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2
   A: 0x01,
   NS: 0x02,
   MD: 0x03,
@@ -31,16 +33,23 @@ export const TYPE = {
   MINFO: 0x0e,
   MX: 0x0f,
   TXT: 0x10,
-  AAAA: 0x1c,
-  SRV: 0x21,
-  DNAME: 0x27, // https://en.wikipedia.org/wiki/CNAME_record#DNAME_record
-  EDNS: 0x29,
-  SPF: 0x63,
+
+  AAAA: 0x1c, // 28 https://www.rfc-editor.org/rfc/rfc3596 DNS Extensions to Support IP Version 6
+  SRV: 0x21, // 33 https://datatracker.ietf.org/doc/html/rfc8553#section-3.1 SRV Specification Changes
+  NAPTR: 0x23, // 35 https://datatracker.ietf.org/doc/html/rfc3403#section-4 NAPTR RR Format
+  DNAME: 0x27, // 39 https://www.rfc-editor.org/rfc/rfc6672#section-2 The DNAME Resource Record
+  SVCB: 0x40, // 64 https://www.rfc-editor.org/rfc/rfc9460
+  HTTPS: 0x41, // 65 https://www.rfc-editor.org/rfc/rfc9460
+  OPT: 0x29, // 41 https://datatracker.ietf.org/doc/html/rfc6891 This is a pseudo-record type needed to support EDNS.
+  SPF: 0x63, // 99 https://datatracker.ietf.org/doc/html/rfc7208
+
+  // 3.2.3. QTYPE values https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.3
   AXFR: 0xfc,
   MAILB: 0xfd,
   MAILA: 0xfe,
   ANY: 0xff,
-  CAA: 0x101,
+
+  CAA: 0x101, // 257 https://www.rfc-editor.org/rfc/rfc8659 RFC 8659 DNS Certification Authority Authorization (CAA) Resource Record
 };
 
 export const TYPE_INVERTED = invert(TYPE);
@@ -60,7 +69,7 @@ export const CLASS = {
 /**
  * [EDNS_OPTION_CODE description]
  * @type {Object}
- * @docs https://tools.ietf.org/html/rfc6891#section-6.1.2
+ * @docs https://datatracker.ietf.org/doc/html/rfc6891#section-6.1.2
  */
 export const EDNS_OPTION_CODE = {
   ECS: 0x08,
@@ -98,16 +107,14 @@ export interface DnsResponseAddress extends DnsResponse {
   address: string;
 }
 
-export interface DnsResponseA extends DnsResponseAddress {
-}
+export interface DnsResponseA extends DnsResponseAddress {}
 
 export interface DnsResponseMX extends DnsResponse {
   exchange: string;
   priority: number;
 }
 
-export interface DnsResponseAAAA extends DnsResponseAddress {
-}
+export interface DnsResponseAAAA extends DnsResponseAddress {}
 
 export interface DnsResponseNS extends DnsResponse {
   ns: string;
@@ -118,22 +125,22 @@ export interface DnsResponseCNAME extends DnsResponse {
 }
 
 export interface DnsResponseSPF extends DnsResponse {
-  data: string
+  data: string;
 }
 export interface DnsResponseSOA extends DnsResponse {
-  primary : string
-  admin: string
-  serial: number
-  refresh: number
-  retry: number
-  expiration: number
-  minimum: number
+  primary: string;
+  admin: string;
+  serial: number;
+  refresh: number;
+  retry: number;
+  expiration: number;
+  minimum: number;
 }
 export interface DnsResponseSRV extends DnsResponse {
-  priority: number
-  weight: number
-  port: number
-  target: string
+  priority: number;
+  weight: number;
+  port: number;
+  target: string;
 }
 
 /**
@@ -477,7 +484,11 @@ export class ResourceSPF {
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(_reader: BufferReader, _length: number, _info: DnsResponseAAAA) {
+  static decode(
+    _reader: BufferReader,
+    _length: number,
+    _info: DnsResponseAAAA,
+  ) {
     /*
     const parts = [];
     let bytesRead = 0; let chunkLength = 0;
@@ -567,7 +578,11 @@ export class ResourceEDNS {
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(_reader: BufferReader, _length: number, _info: DnsResponseAAAA) {
+  static decode(
+    _reader: BufferReader,
+    _length: number,
+    _info: DnsResponseAAAA,
+  ) {
     /*
   this.type = Packet.TYPE.EDNS;
   this.class = 512;
@@ -672,7 +687,9 @@ export function encodeResponseDefault(writer: BufferWriter, info: DnsBasic) {
       ResourceSOA.encode(writer, info as DnsResponseSOA);
       break;
     default:
-      throw new Error(`encodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`);
+      throw new Error(
+        `encodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
+      );
   }
 }
 
@@ -697,7 +714,9 @@ export function decodeResponseDefault(reader: BufferReader, info: DnsBasic) {
       for (let lengthToRead = length; lengthToRead > 0; lengthToRead -= 1) {
         reader.read(8);
       }
-      throw new Error(`decodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`);
+      throw new Error(
+        `decodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
+      );
     }
   }
 }

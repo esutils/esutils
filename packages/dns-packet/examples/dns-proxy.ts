@@ -131,13 +131,17 @@ async function startDnsServer() {
       serverInfo.logFile = await fs.promises.open(serverInfo.log, 'a');
     }
   }
-  server.on('message', async (message: Uint8Array, rinfo) => {
-    const request = Packet.decode(message, decodeResponseDefault);
+  server.on('message', async (message: Buffer, rinfo) => {
+    const request = Packet.decode(message as Uint8Array, decodeResponseDefault);
     const questions = request.questions.filter(
       (x) => x.type === TYPE.A
         || x.type === TYPE.AAAA
         || x.type === TYPE.CNAME
-        || x.type === TYPE.DNAME,
+        || x.type === TYPE.DNAME
+        || x.type === TYPE.HTTPS
+        || x.type === TYPE.SVCB
+        || x.type === TYPE.NAPTR
+        || x.type === TYPE.PTR,
     );
     const response: DnsPacket = {
       header: request.header,
@@ -161,19 +165,22 @@ async function startDnsServer() {
         const { servers } = queryFinalResult.state;
         for (let i = 0; i < 10 && !foundResponse; i += 1) {
           for (let j = 0; j < servers.length; j += 1) {
-            const responseCurrent = servers[j].result?.packet;
+            const serverCurrent = servers[j];
+            const responseCurrent = serverCurrent.result?.packet;
             if (responseCurrent) {
               if (
                 responseCurrent.answers.length > 0
                 || responseCurrent.authorities.length > 0
               ) {
-                response.header = responseCurrent.header;
+                response.header = JSON.parse(
+                  JSON.stringify(responseCurrent.header),
+                );
                 response.header.id = request.header.id;
                 response.questions = responseCurrent.questions;
                 response.answers = responseCurrent.answers;
                 response.authorities = responseCurrent.authorities;
                 response.additionals = responseCurrent.additionals;
-                dnsResult = servers[j];
+                dnsResult = serverCurrent;
                 foundResponse = true;
                 break;
               }
@@ -264,6 +271,8 @@ async function startDnsServer() {
           }
         }
       }
+    } else {
+      console.log(`The questions count is 0 for ${message.toString('hex')} ${JSON.stringify(request.questions)}`);
     }
     // console.log(`The naswer is: ${JSON.stringify(response.answers)}`);
     const responseBuffer = Packet.encode(response, encodeResponseDefault);
@@ -279,6 +288,11 @@ async function startDnsServer() {
     console.log(`Server is listening at port: ${port}`);
     console.log(`Server ip: ${ipaddr}`);
     console.log(`Server is IP4/IP6: ${family}`);
+  });
+
+  server.on('error', (err) => {
+    console.log(`Socket error received ${err}`);
+    process.exit(-1);
   });
 
   // emits after the socket is closed using socket.close();

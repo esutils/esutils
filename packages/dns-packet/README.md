@@ -1,6 +1,8 @@
 
 # A minimal dns-packet library that implemented in `typescript`
 
+This is a fork implementation of <https://github.com/lsongdev/node-dns>
+
 ## Building dns-proxy
 
 ```bash
