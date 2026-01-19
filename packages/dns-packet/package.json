@@ -37,6 +37,7 @@
     }
   },
   "dependencies": {
-    "@esutils/invert": "^0.0.1"
+    "@esutils/invert": "^0.0.1",
+    "@esutils/delay": "^0.1.1"
   }
 }

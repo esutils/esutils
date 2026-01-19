@@ -22,6 +22,7 @@ async function demoParallel() {
       },
     ],
     questions,
+    1000,
   );
   console.log(JSON.stringify(dnsResultA));
   // 180.76.76.76
@@ -37,6 +38,7 @@ async function demoParallel() {
       },
     ],
     questions,
+    1000,
   );
   console.log(JSON.stringify(dnsResultB));
 }

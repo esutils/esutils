@@ -14,6 +14,7 @@ import {
   TYPE,
 } from '@esutils/dns-packet';
 
+import { delay } from '@esutils/delay';
 import { queryMultipleDNS } from './dns-util';
 import { updateDomains, checkDomains, DnsServerInfo } from './dns-proxy-utils';
 
@@ -130,10 +131,13 @@ async function startDnsServer() {
       serverInfo.logFile = await fs.promises.open(serverInfo.log, 'a');
     }
   }
-  server.on('message', async (message, rinfo) => {
+  server.on('message', async (message: Uint8Array, rinfo) => {
     const request = Packet.decode(message, decodeResponseDefault);
     const questions = request.questions.filter(
-      (x) => x.type === TYPE.A || x.type === TYPE.AAAA || x.type === TYPE.CNAME,
+      (x) => x.type === TYPE.A
+        || x.type === TYPE.AAAA
+        || x.type === TYPE.CNAME
+        || x.type === TYPE.DNAME,
     );
     const response: DnsPacket = {
       header: request.header,
@@ -143,22 +147,76 @@ async function startDnsServer() {
       authorities: [],
       additionals: [],
     };
-    if (questions.length === 1) {
+    if (questions.length >= 1) {
       try {
         const { name } = questions[0]!;
         const dnsServer = getDnsServerInfo(name);
-        const parallelResponse = await queryMultipleDNS(
+        const queryFinalResult = await queryMultipleDNS(
           dnsServer.server.dnsList,
           questions,
+          1000,
         );
-        response.header = parallelResponse.packet.header;
-        response.header.id = request.header.id;
-        response.questions = parallelResponse.packet.questions;
-        response.answers = parallelResponse.packet.answers;
-        response.authorities = parallelResponse.packet.authorities;
-        response.additionals = parallelResponse.packet.additionals;
+        let dnsResult = queryFinalResult.result;
+        let foundResponse = false;
+        const { servers } = queryFinalResult.state;
+        for (let i = 0; i < 10 && !foundResponse; i += 1) {
+          for (let j = 0; j < servers.length; j += 1) {
+            const responseCurrent = servers[j].result?.packet;
+            if (responseCurrent) {
+              if (
+                responseCurrent.answers.length > 0
+                || responseCurrent.authorities.length > 0
+              ) {
+                response.header = responseCurrent.header;
+                response.header.id = request.header.id;
+                response.questions = responseCurrent.questions;
+                response.answers = responseCurrent.answers;
+                response.authorities = responseCurrent.authorities;
+                response.additionals = responseCurrent.additionals;
+                dnsResult = servers[j];
+                foundResponse = true;
+                break;
+              }
+            }
+          }
+
+          // delay for 100ms
+          // eslint-disable-next-line no-await-in-loop
+          await delay(100);
+        }
+        if (!foundResponse) {
+          let errorMessage = `Fetch dns for ${name} failed with:\n`;
+          let hasError = true;
+          for (let j = 0; j < servers.length; j += 1) {
+            const serverCurrent = servers[j];
+            const { result } = serverCurrent;
+            if (!result) {
+              errorMessage += `Timeout from ${serverCurrent.address.ip}\n`;
+            } else {
+              const responseCurrent = result.packet;
+              if (!responseCurrent) {
+                errorMessage += `Fetch dns from ${serverCurrent.address.ip} with error ${result.type}:${result.error}\n`;
+              } else if (responseCurrent.errors.length > 0) {
+                for (let k = 0; k < responseCurrent.errors.length; k += 1) {
+                  errorMessage += `Parse error from ${serverCurrent.address.ip} with ${responseCurrent.errors[k]}\n`;
+                }
+              } else {
+                /* means response with empty entry */
+                hasError = false;
+              }
+            }
+            if (!serverCurrent.closed) {
+              serverCurrent.closed = true;
+              serverCurrent.client.close();
+            }
+          }
+          if (hasError) {
+            console.log(errorMessage);
+          }
+        }
+
         const answersFiltered: DnsResponse[] = [];
-        let newAnswerLog = `${name} ${parallelResponse.ip} addrs:`;
+        let newAnswerLog = `${name} ${dnsResult.address.ip} addrs:`;
         for (let i = 0; i < response.answers.length; i += 1) {
           const answer = response.answers[i];
           if (answer.type === TYPE.A || answer.type === TYPE.AAAA) {
@@ -198,26 +256,11 @@ async function startDnsServer() {
           dnsServer.server.logFile.write(newAnswerLog);
         }
       } catch (error) {
-        let printError = false;
+        console.log(`The dns query error:${error}`);
         if (error instanceof AggregateError) {
-          let requestTimeoutCount = 0;
           for (let i = 0; i < error.errors.length; i += 1) {
             const childError = error.errors[i] as Error;
-            if (childError.message.indexOf('request timedout for') < 0) {
-              requestTimeoutCount += 1;
-            }
-          }
-          printError = requestTimeoutCount < error.errors.length;
-        } else {
-          printError = true;
-        }
-        if (printError) {
-          console.log(`The dns query error:${error}`);
-          if (error instanceof AggregateError) {
-            for (let i = 0; i < error.errors.length; i += 1) {
-              const childError = error.errors[i] as Error;
-              console.log(`The dns query error[${i}]: ${childError}`);
-            }
+            console.log(`The dns query error[${i}]: ${childError}`);
           }
         }
       }

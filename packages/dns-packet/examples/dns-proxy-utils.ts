@@ -1,11 +1,11 @@
 import * as fs from 'fs';
-import { DnsServerItem } from './dns-util';
+import { DnsServerAddress } from './dns-util';
 
 export interface DnsServerInfo {
   tag: string
   log?: string
   logFile?: fs.promises.FileHandle
-  dnsList: DnsServerItem[]
+  dnsList: DnsServerAddress[]
 }
 
 export function updateDomainsFromLine(domains: Record<string, boolean | string>, line: string) {

@@ -8,87 +8,133 @@ import {
   Packet,
 } from '@esutils/dns-packet';
 
+export type DnsPacketErrorType =
+  | 'Normal' // means not a error
+  | 'Timeout'
+  | 'SendError'
+  | 'SocketError';
+
 export interface QueryDnsResult {
-  ip: string;
-  packet: DnsPacket;
+  type: DnsPacketErrorType;
+  packet: DnsPacket | null;
+  error: Error | null;
 }
 
-/* TODO: Add abort signal */
+export interface DnsServerAddress {
+  ip: string;
+  port: number;
+}
+
+export interface DnsServerInfo {
+  address: DnsServerAddress;
+  client: udp.Socket;
+  closed: boolean;
+  name: string;
+  result: QueryDnsResult | undefined;
+}
+
+export interface QueryDnsState {
+  promises: Promise<DnsServerInfo>[];
+  noAnswerCount: number;
+  servers: DnsServerInfo[];
+}
+export interface QueryDnsFinalResult {
+  result: DnsServerInfo;
+  state: QueryDnsState;
+}
+
 export async function queryDNS(
-  dnsServerIp: string,
-  port: number,
+  server: DnsServerInfo,
   questions: DnsQuestion[],
+  timeout: number,
 ) {
   const query = Packet.create();
   query.header.id = Packet.randomHeaderId();
   // https://github.com/song940/node-dns/issues/29
   query.header.rd = 1;
   query.questions = questions;
-  const client = udp.createSocket('udp4');
-  let clientClosed = false;
-  let clientRejected = false;
-  let dnsResolved = false;
-  const { name } = questions[0];
-  return new Promise<QueryDnsResult>((resolve, reject) => {
-    function done(timer: NodeJS.Timeout) {
-      clearTimeout(timer);
-      if (!clientClosed) {
-        clientClosed = true;
-        client.close();
+  return new Promise<DnsServerInfo>((resolve) => {
+    let timerCleared = false;
+    function resolveWith(result: QueryDnsResult) {
+      if (server.result === undefined) {
+        server.result = result;
+        resolve(server);
       }
     }
-    function raiseError(err: Error) {
-      if (!clientRejected) {
-        clientRejected = true;
-        reject(err);
+    function done(timer: NodeJS.Timeout) {
+      if (!timerCleared) {
+        timerCleared = true;
+        clearTimeout(timer);
       }
+      if (!server.closed) {
+        server.closed = true;
+        server.client.close();
+      }
+    }
+    function raiseError(
+      timer: NodeJS.Timeout,
+      type: DnsPacketErrorType,
+      err: Error | null,
+    ) {
+      resolveWith({
+        type,
+        packet: null,
+        error: err,
+      });
+      done(timer);
     }
     const timer = setTimeout(() => {
+      raiseError(timer, 'Timeout', new Error('request timeout'));
+    }, timeout);
+    server.client.once('message', (message: Uint8Array) => {
       done(timer);
-      raiseError(new Error(`request timedout for ${name}`));
-    }, 10000);
-    client.once('message', (message) => {
-      dnsResolved = true;
-      done(timer);
-      const response = Packet.decode(message, decodeResponseDefault);
-      if (response.answers.length === 0 && response.authorities.length == 0) {
-        // TODO: Check the question, sometimes the answerws may need to be 0
-        const msg = `no answer for ${name} from ${dnsServerIp}:${port}`;
-        raiseError(new Error(msg));
-        return;
-      }
-      if (response.errors.length > 0) {
-        console.error(response.errors);
-      }
-      resolve({
-        ip: dnsServerIp,
-        packet: response,
+      resolveWith({
+        type: 'Normal',
+        packet: Packet.decode(message, decodeResponseDefault),
+        error: null,
       });
     });
-    client.once('close', () => {
-      if (!dnsResolved) {
-        raiseError(new Error('dns not retrieved'));
-      }
+    server.client.once('close', () => {
+      server.closed = true;
+      done(timer);
     });
-    client.once('error', raiseError);
+    server.client.once('error', (error) => raiseError(timer, 'SocketError', error));
     // DNS request timeout to 10 seconds
     const buf = Packet.encode(query, encodeResponseDefault);
-    client.send(buf, port, dnsServerIp, (err) => err && raiseError(err));
+    server.client.send(buf, server.address.port, server.address.ip, (err) => {
+      if (err) {
+        raiseError(timer, 'SendError', err);
+      } else {
+        // means have no error
+      }
+    });
   });
 }
 
-export interface DnsServerItem {
-  ip: string;
-  port: number;
-}
-
 export async function queryMultipleDNS(
-  servers: DnsServerItem[],
+  serverAddresses: DnsServerAddress[],
   questions: DnsQuestion[],
-) {
-  const promises: Promise<QueryDnsResult>[] = [];
-  for (let i = 0; i < servers.length; i += 1) {
-    promises.push(queryDNS(servers[i].ip, servers[i].port, questions));
+  timeout: number,
+): Promise<QueryDnsFinalResult> {
+  const state: QueryDnsState = {
+    promises: [],
+    noAnswerCount: 0,
+    servers: [],
+  };
+  for (let i = 0; i < serverAddresses.length; i += 1) {
+    const serverInfo: DnsServerInfo = {
+      address: serverAddresses[i],
+      client: udp.createSocket('udp4'),
+      closed: false,
+      name: questions[0].name,
+      result: undefined,
+    };
+    state.servers.push(serverInfo);
+    state.promises.push(queryDNS(serverInfo, questions, timeout));
   }
-  return Promise.any(promises);
+  const result = await Promise.any(state.promises);
+  return {
+    result,
+    state,
+  };
 }
