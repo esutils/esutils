@@ -277,13 +277,13 @@ export class Question {
    * @param  {[type]} reader [description]
    * @return {[type]}        [description]
    */
-  static decode(reader: BufferReader, question: DnsQuestion) {
+  static decode(this: void, reader: BufferReader, question: DnsQuestion) {
     question.name = Name.decode(reader);
     question.type = reader.read(16);
     question.class = reader.read(16);
   }
 
-  static encode(writer: BufferWriter, question: DnsQuestion) {
+  static encode(this: void, writer: BufferWriter, question: DnsQuestion) {
     Name.encode(question.name, writer);
     writer.write(question.type, 16);
     writer.write(question.class, 16);
