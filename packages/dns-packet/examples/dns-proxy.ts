@@ -127,7 +127,6 @@ async function startDnsServer() {
     const tag = tags[i];
     const serverInfo = AllDnsServerInfo[tag];
     if (serverInfo.log) {
-       
       serverInfo.logFile = await fs.promises.open(serverInfo.log, 'a');
     }
   }
@@ -188,7 +187,6 @@ async function startDnsServer() {
           }
 
           // delay for 100ms
-           
           await delay(100);
         }
         if (!foundResponse) {

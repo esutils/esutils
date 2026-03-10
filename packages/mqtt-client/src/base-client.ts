@@ -1,4 +1,3 @@
- 
 import { Deferred } from '@esutils/deferred';
 import {
   type QoS,
@@ -157,7 +156,6 @@ export class OutgoingMemoryStore extends OutgoingStore {
   }
 
   async* iterate(): AsyncIterable<IPublishPacket | IPubrelPacket> {
-     
     for (const value of this.packets.values()) {
       yield value;
     }
@@ -375,7 +373,6 @@ export abstract class BaseClient {
   }
 
   protected async flushUnacknowledgedPublishes() {
-     
     for await (const packet of this.outgoingStore.iterate()) {
       if (packet.cmd === 'publish') {
         await this.send({ ...packet, dup: true });
