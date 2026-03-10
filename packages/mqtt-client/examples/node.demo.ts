@@ -120,6 +120,7 @@ export class Client extends BaseClient {
     this.socket.end();
 
     this.socket = undefined;
+    await Promise.resolve();
   }
 }
 

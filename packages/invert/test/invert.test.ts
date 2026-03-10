@@ -5,7 +5,7 @@ describe('invert in typescript', () => {
     expect(typeof invert).toBe('function');
   });
 
-  it('function call', async () => {
+  it('function call', () => {
     const a = {
       'foo': 'bar',
       'xxx': 'yyy'

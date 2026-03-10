@@ -30,14 +30,17 @@ class TestClient extends BaseClient {
 
   protected async open(_url: URL) {
     this.socket = undefined;
+    await Promise.resolve();
   }
 
   protected async write(_bytes: Uint8Array) {
     this.socket = undefined;
+    await Promise.resolve();
   }
 
   protected async close() {
     this.socket = undefined;
+    await Promise.resolve();
   }
 
   public bytesReceived(bytes: Uint8Array) {

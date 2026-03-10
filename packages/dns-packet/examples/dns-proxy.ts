@@ -9,6 +9,7 @@ import {
   type DnsResponse,
   type DnsResponseA,
   type DnsResponseAddress,
+  type HeaderInfo,
   encodeResponseDefault,
   Packet,
   TYPE,
@@ -134,6 +135,7 @@ async function startDnsServer() {
       serverInfo.logFile = await fs.promises.open(serverInfo.log, 'a');
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   server.on('message', async (message: Buffer, rinfo) => {
     const request = Packet.decode(message as Uint8Array, decodeResponseDefault);
     const questions = request.questions.filter(
@@ -178,7 +180,7 @@ async function startDnsServer() {
               ) {
                 response.header = JSON.parse(
                   JSON.stringify(responseCurrent.header),
-                );
+                ) as HeaderInfo;
                 response.header.id = request.header.id;
                 response.questions = responseCurrent.questions;
                 response.answers = responseCurrent.answers;
@@ -266,7 +268,7 @@ async function startDnsServer() {
           dnsServer.server.logFile.write(newAnswerLog);
         }
       } catch (error) {
-        console.log(`The dns query error:${error}`);
+        console.log(`The dns query error:${error as Error}`);
         if (error instanceof AggregateError) {
           for (let i = 0; i < error.errors.length; i += 1) {
             const childError = error.errors[i] as Error;
