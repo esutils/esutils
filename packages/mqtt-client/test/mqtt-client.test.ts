@@ -22,7 +22,6 @@ class TestClient extends BaseClient {
     this.connectionState = 'connecting';
   }
 
-   
   protected validateURL(url: URL) {
     if (url.protocol !== 'mqtt:') {
       throw new Error('URL protocol must be mqtt');

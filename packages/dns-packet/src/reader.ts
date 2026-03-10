@@ -1,4 +1,3 @@
- 
 
 function p(a: number[]) {
   let n = 0;

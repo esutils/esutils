@@ -1,4 +1,3 @@
- 
 import {
   BaseClient,
   type BaseClientOptions,
@@ -27,7 +26,6 @@ export class Client extends BaseClient {
 
   private socketState?:'connecting' | 'connected' | 'failed';
 
-   
   protected validateURL(url: URL) {
     // TODO: add mqtts
     if (url.protocol !== 'mqtt:') {
