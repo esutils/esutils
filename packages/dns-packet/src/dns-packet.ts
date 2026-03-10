@@ -1,7 +1,3 @@
- 
- 
- 
- 
 import { invert } from '@esutils/invert';
 import { BufferReader } from './reader';
 import { BufferWriter } from './writer';

@@ -1,4 +1,3 @@
- 
 export type QoS = 0 | 1 | 2;
 /*
   3 = MQTT V3.1

@@ -10,7 +10,6 @@ export function invert<T extends Record<PropertyKey, PropertyKey>>(
   obj: T,
 ): InvertResult<T> {
   const retobj = {} as InvertResult<T>;
-   
   for (const key in obj) {
     retobj[obj[key]] = key;
   }
