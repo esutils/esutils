@@ -111,14 +111,16 @@ export class IncomingMemoryStore extends IncomingStore {
 
   async store(packetId: number): Promise<void> {
     this.packets.add(packetId);
+    await Promise.resolve();
   }
 
   async has(packetId: number): Promise<boolean> {
-    return this.packets.has(packetId);
+    return await Promise.resolve(this.packets.has(packetId));
   }
 
   async discard(packetId: number): Promise<void> {
     this.packets.delete(packetId);
+    return await Promise.resolve();
   }
 }
 
@@ -149,13 +151,16 @@ export class OutgoingMemoryStore extends OutgoingStore {
     }
 
     this.packets.set(packet.messageId, packet);
+    await Promise.resolve();
   }
 
   async discard(packetId: number): Promise<void> {
     this.packets.delete(packetId);
+    await Promise.resolve();
   }
 
   async* iterate(): AsyncIterable<IPublishPacket | IPubrelPacket> {
+    await Promise.resolve();
     for (const value of this.packets.values()) {
       yield value;
     }
@@ -271,7 +276,7 @@ export abstract class BaseClient {
   private eventListeners: Map<string, Function[]> = new Map();
 
   private timers: {
-    [key: string]: any | undefined;
+    [key: string]: ReturnType<typeof setTimeout> | undefined;
   } = {};
 
   protected log: (msg: string, ...args: unknown[]) => void;
@@ -368,7 +373,7 @@ export abstract class BaseClient {
       }
       const { packet, deferred } = queued;
 
-      this.sendPublish(packet, deferred);
+      await this.sendPublish(packet, deferred);
     }
   }
 
@@ -1115,7 +1120,9 @@ export abstract class BaseClient {
     const elapsed = Date.now() - this.lastPacketTime;
     const timeout = this.keepalive * 1000 - elapsed;
 
-    this.startTimer('keepalive', () => this.sendKeepalive(), timeout);
+    this.startTimer('keepalive', () => {
+      this.sendKeepalive()
+    }, timeout);
   }
 
   protected stopKeepaliveTimer() {
@@ -1309,7 +1316,7 @@ export abstract class BaseClient {
     if (listeners) {
       for (let i = 0; i < listeners.length; i += 1) {
         const listener = listeners[i];
-        listener(...args);
+        (listener as (...args: unknown[]) => void)(...args);
       }
     }
   }
