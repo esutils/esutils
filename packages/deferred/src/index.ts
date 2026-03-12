@@ -1,1 +1,0 @@
-export { Deferred } from './Deferred';

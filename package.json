@@ -8,10 +8,12 @@
   },
   "private": true,
   "scripts": {
-    "build": "yarn workspaces foreach -A -t run build",
+    "build": "tsc --build tsconfig.mjs.json",
+    "build-workspaces": "yarn workspaces foreach -A -t run build",
     "test-only": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.ts",
     "test": "yarn run build && yarn run test-only",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "watch": " tsc --build --watch tsconfig.mjs.json"
   },
   "workspaces": [
     "packages/*"

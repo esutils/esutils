@@ -1,11 +1,16 @@
 {
-  "extends": "../../tsconfig-base.json",
+  "extends": "./../../tsconfig-base.json",
   "compilerOptions": {
-    "allowJs": false,
-    "paths": {
-      "@esutils/dns-packet": [
-        "./src/index.ts"
-      ]
-    }
-  }
+    "allowJs": true,
+  },
+  "include": [
+    "*.ts",
+    "examples/**/*.cjs",
+    "examples/**/*.mjs",
+    "examples/**/*.ts",
+    "src/**/*.mts",
+    "test/**/*.cjs",
+    "test/**/*.mjs",
+    "test/**/*.ts",
+  ]
 }
