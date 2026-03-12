@@ -21,8 +21,7 @@
     "packages/run-command/**/*.ts",
     "packages/run-command/**/*.mts",
     "scripts/**/*.mjs",
-    ".eslintrc.js",
-    "jest.config.ts",
+    "*.ts",
     "packages/*/jest.config.ts",
   ]
 }
