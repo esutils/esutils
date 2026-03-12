@@ -2,8 +2,8 @@ import * as udp from 'dgram';
 
 import {
   decodeResponseDefault,
-  DnsPacket,
-  DnsQuestion,
+  type DnsPacket,
+  type DnsQuestion,
   encodeResponseDefault,
   Packet,
 } from '@esutils/dns-packet';

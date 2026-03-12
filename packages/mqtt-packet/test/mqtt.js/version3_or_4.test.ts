@@ -1,5 +1,5 @@
 import {
-  PacketOptions, decode, encode, AnyPacket,
+  type PacketOptions, decode, encode, type AnyPacket,
 } from '@esutils/mqtt-packet';
 
 const utf8Encoder = new TextEncoder();

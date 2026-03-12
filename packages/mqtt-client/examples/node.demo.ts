@@ -1,7 +1,7 @@
-/* eslint-disable max-classes-per-file */
+ 
 import {
   BaseClient,
-  BaseClientOptions,
+  type BaseClientOptions,
 } from '@esutils/mqtt-client';
 
 import * as net from 'net';
@@ -27,7 +27,7 @@ export class Client extends BaseClient {
 
   private socketState?:'connecting' | 'connected' | 'failed';
 
-  // eslint-disable-next-line class-methods-use-this
+   
   protected validateURL(url: URL) {
     // TODO: add mqtts
     if (url.protocol !== 'mqtt:') {

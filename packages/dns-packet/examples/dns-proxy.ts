@@ -5,10 +5,10 @@ import * as net from 'net';
 import {
   CLASS,
   decodeResponseDefault,
-  DnsPacket,
-  DnsResponse,
-  DnsResponseA,
-  DnsResponseAddress,
+  type DnsPacket,
+  type DnsResponse,
+  type DnsResponseA,
+  type DnsResponseAddress,
   encodeResponseDefault,
   Packet,
   TYPE,
@@ -16,7 +16,7 @@ import {
 
 import { delay } from '@esutils/delay';
 import { queryMultipleDNS } from './dns-util';
-import { updateDomains, checkDomains, DnsServerInfo } from './dns-proxy-utils';
+import { updateDomains, checkDomains, type DnsServerInfo } from './dns-proxy-utils';
 
 const DnsPort = parseInt(process.env.DNS_PORT ?? '53', 10);
 
@@ -73,9 +73,9 @@ function parseArgs(argv: string[]) {
           };
         }
         if (argi === '--log') {
-          AllDnsServerInfo[argt]!.log = argp;
+          AllDnsServerInfo[argt].log = argp;
         } else {
-          AllDnsServerInfo[argt]!.dnsList.push({
+          AllDnsServerInfo[argt].dnsList.push({
             ip: argp,
             port: 53,
           });
@@ -127,7 +127,7 @@ async function startDnsServer() {
     const tag = tags[i];
     const serverInfo = AllDnsServerInfo[tag];
     if (serverInfo.log) {
-      // eslint-disable-next-line no-await-in-loop
+       
       serverInfo.logFile = await fs.promises.open(serverInfo.log, 'a');
     }
   }
@@ -153,7 +153,7 @@ async function startDnsServer() {
     };
     if (questions.length >= 1) {
       try {
-        const { name } = questions[0]!;
+        const { name } = questions[0];
         const dnsServer = getDnsServerInfo(name);
         const queryFinalResult = await queryMultipleDNS(
           dnsServer.server.dnsList,
@@ -188,7 +188,7 @@ async function startDnsServer() {
           }
 
           // delay for 100ms
-          // eslint-disable-next-line no-await-in-loop
+           
           await delay(100);
         }
         if (!foundResponse) {
