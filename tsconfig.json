@@ -1,27 +1,10 @@
 {
   "extends": "./tsconfig-base.json",
+  "compilerOptions": {
+    "allowJs": true,
+  },
   "include": [
-    "packages/async-semaphore/**/*.js",
-    "packages/async-semaphore/**/*.mjs",
-    "packages/async-semaphore/**/*.cjs",
-    "packages/async-semaphore/**/*.ts",
-    "packages/deferred/**/*.js",
-    "packages/deferred/**/*.mjs",
-    "packages/deferred/**/*.cjs",
-    "packages/deferred/**/*.ts",
-    "packages/delay/**/*.js",
-    "packages/delay/**/*.mjs",
-    "packages/delay/**/*.cjs",
-    "packages/delay/**/*.ts",
-    "packages/dns-packet/**/*.ts",
-    "packages/empty/**/*.ts",
-    "packages/invert/**/*.ts",
-    "packages/mqtt-client/**/*.ts",
-    "packages/mqtt-packet/**/*.ts",
-    "packages/run-command/**/*.ts",
-    "packages/run-command/**/*.mts",
     "scripts/**/*.mjs",
     "*.ts",
-    "packages/*/jest.config.ts",
   ]
 }

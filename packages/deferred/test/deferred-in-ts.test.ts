@@ -1,5 +1,5 @@
 import { Deferred } from '@esutils/deferred';
-import {jest} from '@jest/globals'
+import { jest } from '@jest/globals'
 
 describe('Deferred in typescript', () => {
   it('constructor', () => {
