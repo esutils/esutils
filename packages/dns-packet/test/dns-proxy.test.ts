@@ -1,5 +1,8 @@
 import assert from 'assert';
-import { updateDomainsFromLine, checkDomains } from '../examples/dns-proxy-utils';
+import {
+  updateDomainsFromLine,
+  checkDomains,
+} from '../examples/dns-proxy-utils';
 
 const lines = `
 .github.blog
@@ -20,8 +23,17 @@ test('Packet#decode', () => {
     updateDomainsFromLine(x, lines[i]);
   }
   console.log(x);
-  assert.strictEqual(checkDomains(x, 'www.github.com'.split('.')), '140.82.121.3');
+  assert.strictEqual(
+    checkDomains(x, 'www.github.com'.split('.')),
+    '140.82.121.3',
+  );
   assert.strictEqual(checkDomains(x, 'github.com'.split('.')), '140.82.121.3');
-  assert.strictEqual(checkDomains(x, 'codeload.github.com'.split('.')), '140.82.113.10');
-  assert.strictEqual(checkDomains(x, 'some_thing_else.github.com'.split('.')), true);
+  assert.strictEqual(
+    checkDomains(x, 'codeload.github.com'.split('.')),
+    '140.82.113.10',
+  );
+  assert.strictEqual(
+    checkDomains(x, 'some_thing_else.github.com'.split('.')),
+    true,
+  );
 });
