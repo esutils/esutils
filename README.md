@@ -8,7 +8,9 @@ sudo apt-get install -y nodejs
 ```
 
 ```bat
-npm i -G yarn
+npm install -g corepack
+yarn set version berry
+npm i -g @yarnpkg/cli
 ```
 
 # New solution

@@ -6,46 +6,33 @@
     "type": "git",
     "url": "https://github.com/esutils/esutils.git"
   },
+  "private": true,
   "scripts": {
-    "build": "yarn run build-async-semaphore && yarn run build-deferred && yarn run build-delay && yarn run build-invert && yarn run build-dns-packet && yarn run build-invert && yarn run build-mqtt-packet",
-    "build-async-semaphore": "cd packages/async-semaphore && yarn build",
-    "build-deferred": "cd packages/deferred && yarn build",
-    "build-delay": "cd packages/delay && yarn build",
-    "build-dns-packet": "cd packages/dns-packet && yarn build",
-    "build-invert": "cd packages/invert && yarn build",
-    "build-mqtt-packet": "cd packages/mqtt-packet && yarn build"
+    "build": "yarn workspaces foreach -A -t run build",
+    "test-only": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.ts",
+    "test": "yarn run build && yarn run test-only",
+    "lint": "eslint ."
   },
   "workspaces": [
-    "packages/async-semaphore",
-    "packages/deferred",
-    "packages/delay",
-    "packages/dns-packet",
-    "packages/empty",
-    "packages/invert",
-    "packages/mqtt-client",
-    "packages/mqtt-packet"
+    "packages/*"
   ],
   "devDependencies": {
-    "@types/jest": "^27.5.1",
-    "@types/node": "^17.0.35",
-    "@typescript-eslint/eslint-plugin": "^5.26.0",
-    "@typescript-eslint/parser": "^5.26.0",
-    "eslint": "^8.16.0",
-    "eslint-config-airbnb": "^19.0.4",
-    "eslint-config-airbnb-typescript": "^17.0.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-jest": "^26.2.2",
-    "eslint-plugin-jsx-a11y": "^6.5.1",
-    "eslint-plugin-react": "^7.30.0",
-    "eslint-plugin-react-hooks": "^4.5.0",
-    "jest": "^28.1.0",
+    "@eslint/js": "^10.0.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.4.0",
+    "eslint": "^10.0.3",
+    "eslint-plugin-jest": "^29.15.0",
+    "jest": "^30.2.0",
+    "jiti": "^2.6.1",
+    "ts-jest": "^29.4.6",
     "ts-loader": "9.3.0",
-    "ts-jest": "^28.0.3",
-    "ts-node": "^10.8.0",
-    "typescript": "^4.6.4",
-    "webpack": "^5.72.1",
-    "webpack-cli": "^4.9.2",
-    "webpack-dev-server": "^4.9.0"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.0",
+    "webpack": "^5.105.4",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.3"
   },
-  "private": true
+  "packageManager": "yarn@4.13.0"
 }
