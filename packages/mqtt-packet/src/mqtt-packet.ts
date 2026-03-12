@@ -1,5 +1,5 @@
 import { decodeLength } from './length';
-import { UTF8Encoder, UTF8Decoder } from './utf8';
+import { type UTF8Encoder, type UTF8Decoder } from './utf8';
 
 import connect from './connect';
 import connack from './connack';
@@ -16,21 +16,21 @@ import subscribe from './subscribe';
 import unsuback from './unsuback';
 import unsubscribe from './unsubscribe';
 import {
-  IConnectPacket,
-  IConnackPacket,
-  IDisconnectPacket,
-  IPingreqPacket,
-  IPingrespPacket,
-  IPubackPacket,
-  IPubcompPacket,
-  IPublishPacket,
-  IPubrecPacket,
-  IPubrelPacket,
-  ISubackPacket,
-  ISubscribePacket,
-  IUnsubackPacket,
-  IUnsubscribePacket,
-  PacketOptions,
+  type IConnectPacket,
+  type IConnackPacket,
+  type IDisconnectPacket,
+  type IPingreqPacket,
+  type IPingrespPacket,
+  type IPubackPacket,
+  type IPubcompPacket,
+  type IPublishPacket,
+  type IPubrecPacket,
+  type IPubrelPacket,
+  type ISubackPacket,
+  type ISubscribePacket,
+  type IUnsubackPacket,
+  type IUnsubscribePacket,
+  type PacketOptions,
   createHeaderFlagsError,
 } from './basic';
 
