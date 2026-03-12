@@ -98,7 +98,9 @@ export async function queryDNS(
       server.closed = true;
       done(timer);
     });
-    server.client.once('error', (error) => raiseError(timer, 'SocketError', error));
+    server.client.once('error', (error) =>
+      raiseError(timer, 'SocketError', error),
+    );
     // DNS request timeout to 10 seconds
     const buf = Packet.encode(query, encodeResponseDefault);
     server.client.send(buf, server.address.port, server.address.ip, (err) => {
