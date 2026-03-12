@@ -18,6 +18,8 @@
     "packages/invert/**/*.ts",
     "packages/mqtt-client/**/*.ts",
     "packages/mqtt-packet/**/*.ts",
+    "packages/run-command/**/*.ts",
+    "packages/run-command/**/*.mts",
     "scripts/**/*.mjs",
     ".eslintrc.js",
     "jest.config.ts",
