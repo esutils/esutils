@@ -13,6 +13,7 @@ import {
   encodeResourceDefault,
   Packet,
   TYPE,
+  type DnsQuestion,
 } from '@esutils/dns-packet';
 
 import { delay } from '@esutils/delay';
@@ -141,26 +142,34 @@ async function startDnsServer() {
     message: Buffer,
     rinfo: udp.RemoteInfo,
   ) {
-    const request = Packet.decode(message as Uint8Array, decodeResourceDefault);
-    const questions = request.questions.filter(
-      (x) =>
-        x.type === TYPE.A ||
-        x.type === TYPE.AAAA ||
-        x.type === TYPE.CNAME ||
-        x.type === TYPE.DNAME ||
-        x.type === TYPE.HTTPS ||
-        x.type === TYPE.SVCB ||
-        x.type === TYPE.NAPTR ||
-        x.type === TYPE.PTR,
+    const errorsRequest = [] as string[];
+    const request = Packet.decode(
+      message as Uint8Array,
+      errorsRequest,
+      decodeResourceDefault,
     );
-    const response: DnsPacket = {
+    let questions = [] as DnsQuestion[];
+    if (errorsRequest.length == 0) {
+      questions = request.questions.filter(
+        (x) =>
+          x.type === TYPE.A ||
+          x.type === TYPE.AAAA ||
+          x.type === TYPE.CNAME ||
+          x.type === TYPE.DNAME ||
+          x.type === TYPE.HTTPS ||
+          x.type === TYPE.SVCB ||
+          x.type === TYPE.NAPTR ||
+          x.type === TYPE.PTR,
+      );
+    }
+    const responseDefault = {
       header: request.header,
-      errors: [],
       questions: request.questions,
       answers: [],
       authorities: [],
       additionals: [],
     };
+    const response: DnsPacket = Object.assign({}, responseDefault);
     if (questions.length >= 1) {
       try {
         const { name } = questions[0];
@@ -202,6 +211,7 @@ async function startDnsServer() {
         }
         if (!foundResponse) {
           let errorMessage = `Fetch dns for ${name} failed with:\n`;
+          errorMessage += `Request:'${Buffer.from(message).toString('hex')}'\n`;
           let hasError = true;
           for (let j = 0; j < servers.length; j += 1) {
             const serverCurrent = servers[j];
@@ -212,9 +222,9 @@ async function startDnsServer() {
               const responseCurrent = result.packet;
               if (!responseCurrent) {
                 errorMessage += `Fetch dns from ${serverCurrent.address.ip} with error ${result.type}:${result.error}\n`;
-              } else if (responseCurrent.errors.length > 0) {
-                for (let k = 0; k < responseCurrent.errors.length; k += 1) {
-                  errorMessage += `Parse error from ${serverCurrent.address.ip} with ${responseCurrent.errors[k]}\n`;
+              } else if (result.errors.length > 0) {
+                for (let k = 0; k < result.errors.length; k += 1) {
+                  errorMessage += `Parse error from ${serverCurrent.address.ip} with ${result.errors[k]}\n`;
                 }
               } else {
                 /* means response with empty entry */
@@ -257,6 +267,7 @@ async function startDnsServer() {
                 class: CLASS.IN,
                 address: ip,
                 ttl: 300,
+                errors: [],
               };
               answersFiltered.push(addr);
             }
@@ -286,7 +297,25 @@ async function startDnsServer() {
       );
     }
     // console.log(`The naswer is: ${JSON.stringify(response.answers)}`);
-    const responseBuffer = Packet.encode(response, encodeResourceDefault);
+    const errorsResponse = [] as string[];
+    let responseBuffer = Packet.encode(
+      response,
+      errorsResponse,
+      encodeResourceDefault,
+    );
+    if (errorsResponse.length > 0) {
+      const errorsResponseDefault = [] as string[];
+      const responseBufferDefault = Packet.encode(
+        response,
+        errorsResponseDefault,
+        encodeResourceDefault,
+      );
+      if (errorsResponseDefault.length == 0) {
+        responseBuffer = responseBufferDefault;
+      } else {
+        responseBuffer = Buffer.from(message);
+      }
+    }
     server.send(responseBuffer, rinfo.port, rinfo.address);
   }
 

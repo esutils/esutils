@@ -18,6 +18,7 @@ export interface QueryDnsResult {
   type: DnsPacketErrorType;
   packet: DnsPacket | null;
   error: Error | null;
+  errors: string[];
 }
 
 export interface DnsServerAddress {
@@ -53,6 +54,7 @@ export async function queryDNS(
   // https://github.com/song940/node-dns/issues/29
   query.header.rd = 1;
   query.questions = questions;
+  const errorsAll = [] as string[];
   return new Promise<DnsServerInfo>((resolve) => {
     let timerCleared = false;
     function resolveWith(result: QueryDnsResult) {
@@ -80,6 +82,7 @@ export async function queryDNS(
         type,
         packet: null,
         error: err,
+        errors: errorsAll,
       });
       done(timer);
     }
@@ -90,17 +93,20 @@ export async function queryDNS(
       done(timer);
       resolveWith({
         type: 'Normal',
-        packet: Packet.decode(message, decodeResourceDefault),
+        packet: Packet.decode(message, errorsAll, decodeResourceDefault),
         error: null,
+        errors: errorsAll,
       });
     });
     server.client.once('close', () => {
       server.closed = true;
       done(timer);
     });
-    server.client.once('error', (error) => raiseError(timer, 'SocketError', error));
+    server.client.once('error', (error) =>
+      raiseError(timer, 'SocketError', error),
+    );
     // DNS request timeout to 10 seconds
-    const buf = Packet.encode(query, encodeResourceDefault);
+    const buf = Packet.encode(query, errorsAll, encodeResourceDefault);
     server.client.send(buf, server.address.port, server.address.ip, (err) => {
       if (err) {
         raiseError(timer, 'SendError', err);

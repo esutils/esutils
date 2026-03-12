@@ -91,6 +91,7 @@ export interface DnsBasic {
   name: string;
   type: number;
   class: number;
+  errors: string[];
 }
 
 export interface DnsQuestion extends DnsBasic {}
@@ -111,6 +112,21 @@ export interface DnsResourceMX extends DnsResource {
 }
 
 export interface DnsResourceAAAA extends DnsResourceAddress {}
+
+export interface DnsResourceEDNS {
+  ednsCode: number;
+}
+
+export interface DnsResourceECS extends DnsResourceEDNS {
+  family: number;
+  sourcePrefixLength: number;
+  scopePrefixLength: number;
+  ip: string;
+}
+
+export interface DnsResourceOPT extends DnsResourceAddress {
+  rdata: DnsResourceEDNS[];
+}
 
 export interface DnsResourceNS extends DnsResource {
   ns: string;
@@ -269,6 +285,7 @@ export class Question {
       name: name ?? '',
       type: type ?? TYPE.ANY,
       class: cls ?? CLASS.ANY,
+      errors: [],
     };
   }
 
@@ -295,6 +312,18 @@ export class Question {
  * @docs https://tools.ietf.org/html/rfc1035#section-4.1.3
  */
 export class Resource {
+  static encodeLengthReserve(writer: BufferWriter, bitLength: number = 16) {
+    // Reserve bitLength bits for resource length
+    const offset = writer.buffer.length;
+    writer.write(0, bitLength);
+    return offset;
+  }
+
+  static encodeLength(writer: BufferWriter, offset: number) {
+    const lengthInBits = writer.buffer.length - offset - 16;
+    writer.update(offset, lengthInBits / 8, 16);
+  }
+
   /**
    * [encode description]
    * @param  writer [description]
@@ -307,14 +336,7 @@ export class Resource {
     writer.write(info.class, 16);
     writer.write(info.ttl, 32);
     // Reserve 16 bits for resource length
-    const offset = writer.buffer.length;
-    writer.write(0, 16);
-    return offset;
-  }
-
-  static encodeLength(writer: BufferWriter, offset: number) {
-    const lengthInBits = writer.buffer.length - offset - 16;
-    writer.update(offset, lengthInBits / 8, 16);
+    return Resource.encodeLengthReserve(writer, 16);
   }
 
   /**
@@ -539,7 +561,7 @@ export class ResourceSRV {
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceSRV) {
+  static decode(reader: BufferReader, _length: number, info: DnsResourceSRV) {
     info.priority = reader.read(16);
     info.weight = reader.read(16);
     info.port = reader.read(16);
@@ -547,63 +569,106 @@ export class ResourceSRV {
   }
 }
 
-export class ResourceEDNS {
-  static encode(writer: BufferWriter, info: DnsResourceAAAA) {
-    const offset = Resource.encode(writer, info);
-    /*
-  const rdataWriter = new Packet.Writer();
-  for (const rdata of record.rdata) {
-    const encoder = Object.keys(Packet.EDNS_OPTION_CODE).filter(function(type) {
-      return rdata.ednsCode === Packet.EDNS_OPTION_CODE[type];
-    })[0];
-    if (encoder in Packet.Resource.EDNS && Packet.Resource.EDNS[encoder].encode) {
-      const w = new Packet.Writer();
-      Packet.Resource.EDNS[encoder].encode(rdata, w);
-      rdataWriter.write(rdata.ednsCode, 16);
-      rdataWriter.write(w.buffer.length / 8, 16);
-      rdataWriter.writeBuffer(w);
-    } else {
-      debug('node-dns > unknown EDNS rdata encoder %s(%j)', encoder, rdata.ednsCode);
-    }
+export class ECS {
+  static create(clientIp: string): DnsResourceECS {
+    const [ip, prefixLength] = clientIp.split('/');
+    const numPrefixLength = parseInt(prefixLength) || 32;
+    return {
+      ednsCode: EDNS_OPTION_CODE.ECS,
+      family: 1,
+      sourcePrefixLength: numPrefixLength,
+      scopePrefixLength: 0,
+      ip,
+    };
   }
-  writer = writer || new Packet.Writer();
-  writer.write(rdataWriter.buffer.length / 8, 16);
-  writer.writeBuffer(rdataWriter);
-  return writer.toBuffer();
-    */
+
+  static decode(reader: BufferReader, length: number): DnsResourceECS {
+    const rdata: DnsResourceECS = {
+      ednsCode: EDNS_OPTION_CODE.ECS,
+      family: reader.read(16),
+      sourcePrefixLength: reader.read(8),
+      scopePrefixLength: reader.read(8),
+      ip: '',
+    };
+    length = length - 4;
+
+    if (rdata.family === 1) {
+      const ipv4Octets = [];
+      while (length--) {
+        const octet = reader.read(8);
+        ipv4Octets.push(octet);
+      }
+      while (ipv4Octets.length < 4) {
+        ipv4Octets.push(0);
+      }
+      rdata.ip = ipv4Octets.join('.');
+    }
+
+    if (rdata.family === 2) {
+      const ipv6Segments = [];
+      for (; length; length -= 2) {
+        const segment = reader.read(16).toString(16);
+        ipv6Segments.push(segment);
+      }
+      while (ipv6Segments.length < 8) {
+        ipv6Segments.push('0');
+      }
+      rdata.ip = ipv6Segments.join(':');
+    }
+    return rdata;
+  }
+
+  static encode(rdata: DnsResourceECS, writer: BufferWriter) {
+    writer.write(rdata.ednsCode, 16);
+    const offset = Resource.encodeLengthReserve(writer, 16);
+    const ip = rdata.ip.split('.').map((s) => parseInt(s));
+    writer.write(rdata.family, 16);
+    writer.write(rdata.sourcePrefixLength, 8);
+    writer.write(rdata.scopePrefixLength, 8);
+    writer.write(ip[0], 8);
+    writer.write(ip[1], 8);
+    writer.write(ip[2], 8);
+    writer.write(ip[3], 8);
+    Resource.encodeLength(writer, offset);
+  }
+}
+
+export class ResourceOPT {
+  static encode(writer: BufferWriter, info: DnsResourceOPT) {
+    const offset = Resource.encode(writer, info);
+    for (const rdata of info.rdata) {
+      switch (rdata.ednsCode) {
+        case EDNS_OPTION_CODE.ECS:
+          ECS.encode(rdata as DnsResourceECS, writer);
+          break;
+        default:
+          info.errors.push(
+            `ResourceOPT encode do not supported ednsCode ${rdata.ednsCode}`,
+          );
+          break;
+      }
+    }
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(
-    _reader: BufferReader,
-    _length: number,
-    _info: DnsResourceAAAA,
-  ) {
-    /*
-  this.type = Packet.TYPE.EDNS;
-  this.class = 512;
-  this.ttl = 0;
-  this.rdata = [];
-
-  while (length) {
-    const optionCode = reader.read(16);
-    const optionLength = reader.read(16); // In octet (https://tools.ietf.org/html/rfc6891#page-8)
-
-    const decoder = Object.keys(Packet.EDNS_OPTION_CODE).filter(function(type) {
-      return optionCode === Packet.EDNS_OPTION_CODE[type];
-    })[0];
-    if (decoder in Packet.Resource.EDNS && Packet.Resource.EDNS[decoder].decode) {
-      const rdata = Packet.Resource.EDNS[decoder].decode(reader, optionLength);
-      this.rdata.push(rdata);
-    } else {
-      reader.read(optionLength); // Ignore data that doesn't understand
-      debug('node-dns > unknown EDNS rdata decoder %s(%j)', decoder, optionCode);
+  static decode(reader: BufferReader, length: number, info: DnsResourceOPT) {
+    info.rdata = [];
+    while (length) {
+      const ednsCode = reader.read(16);
+      const ednsLength = reader.read(16); // In octet (https://tools.ietf.org/html/rfc6891#page-8)
+      switch (ednsCode) {
+        case EDNS_OPTION_CODE.ECS: {
+          info.rdata.push(ECS.decode(reader, ednsLength));
+          break;
+        }
+        default:
+          reader.read(ednsLength); // Ignore data that doesn't understand
+          info.errors.push(
+            `ResourceOPT decode do not supported ednsCode ${ednsCode}: ednsLength:${ednsLength}`,
+          );
+      }
+      length = length - 4 - ednsLength;
     }
-
-    length = length - 4 - optionLength;
-  }
-  return this;
-    */
   }
 }
 
@@ -621,6 +686,7 @@ export function createDnsBasic(): DnsBasic {
     name: '',
     type: TYPE.ANY,
     class: CLASS.ANY,
+    errors: [],
   };
 }
 
@@ -630,13 +696,13 @@ export interface DnsPacket {
   answers: DnsResource[];
   authorities: DnsResource[];
   additionals: DnsResource[];
-  errors: Error[];
 }
 
 function decodeSingle(
   reader: BufferReader,
+  tag: string,
   parsed: DnsBasic[],
-  errors: Error[],
+  errors: string[],
   decode: DecodeFunction,
   count: number,
 ) {
@@ -644,24 +710,29 @@ function decodeSingle(
     try {
       const info = createDnsBasic();
       decode(reader, info);
+      errors.push(`decode ${tag} ${i} has errors: ${info.errors.join(';')}`);
       parsed.push(info);
     } catch (e) {
-      errors.push(e as Error);
+      errors.push((e as Error).message);
     }
   }
 }
 
 function encodeSingle(
   writer: BufferWriter,
+  tag: string,
   dnsBasicList: DnsBasic[],
-  errors: Error[],
+  errors: string[],
   encode: EncodeFunction,
 ) {
   for (let i = 0; i < dnsBasicList.length; i += 1) {
     try {
       encode(writer, dnsBasicList[i]);
+      errors.push(
+        `${tag} ${i} has errors: ${dnsBasicList[i].errors.join(';')}`,
+      );
     } catch (e) {
-      errors.push(e as Error);
+      errors.push((e as Error).message);
     }
   }
 }
@@ -682,8 +753,11 @@ export function encodeResourceDefault(writer: BufferWriter, info: DnsBasic) {
     case TYPE.SOA:
       ResourceSOA.encode(writer, info as DnsResourceSOA);
       break;
+    case TYPE.OPT /* EDNS */:
+      ResourceOPT.encode(writer, info as DnsResourceOPT);
+      break;
     default:
-      throw new Error(
+      info.errors.push(
         `encodeResourceDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
       );
   }
@@ -706,11 +780,14 @@ export function decodeResourceDefault(reader: BufferReader, info: DnsBasic) {
     case TYPE.SOA:
       ResourceSOA.decode(reader, length, info as DnsResourceSOA);
       break;
+    case TYPE.OPT /* EDNS */:
+      ResourceOPT.decode(reader, length, info as DnsResourceOPT);
+      break;
     default: {
       for (let lengthToRead = length; lengthToRead > 0; lengthToRead -= 1) {
         reader.read(8);
       }
-      throw new Error(
+      info.errors.push(
         `decodeResourceDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
       );
     }
@@ -721,7 +798,6 @@ export class Packet {
   static create(): DnsPacket {
     return {
       header: Header.create(),
-      errors: [],
       questions: [],
       answers: [],
       authorities: [],
@@ -737,53 +813,75 @@ export class Packet {
     return (Math.random() * 65535) | 0;
   }
 
-  static decode(buffer: Uint8Array, decoder: DecodeFunction) {
+  static decode(buffer: Uint8Array, errors: string[], decoder: DecodeFunction) {
     const reader = new BufferReader(buffer);
     const dnsParsed = Packet.create();
-    const header = Header.decode(reader);
-    dnsParsed.header = header;
+    let header: HeaderInfo | undefined;
+    try {
+      header = Header.decode(reader);
+      dnsParsed.header = header;
+    } catch (e) {
+      errors.push(`Error decoding DNS header: ${(e as Error).message}`);
+    }
+    if (!header) {
+      return dnsParsed;
+    }
     decodeSingle(
       reader,
+      'questions',
       dnsParsed.questions,
-      dnsParsed.errors,
+      errors,
       Question.decode,
       header.qdcount,
     );
     decodeSingle(
       reader,
+      'answers',
       dnsParsed.answers,
-      dnsParsed.errors,
+      errors,
       decoder,
       header.ancount,
     );
     decodeSingle(
       reader,
+      'authorities',
       dnsParsed.authorities,
-      dnsParsed.errors,
+      errors,
       decoder,
       header.nscount,
     );
     decodeSingle(
       reader,
+      'additionals',
       dnsParsed.additionals,
-      dnsParsed.errors,
+      errors,
       decoder,
       header.arcount,
     );
     return dnsParsed;
   }
 
-  static encode(dnsEntry: DnsPacket, encoder: EncodeFunction) {
+  static encode(
+    dnsEntry: DnsPacket,
+    errors: string[],
+    encoder: EncodeFunction,
+  ) {
     const writer = new BufferWriter();
     dnsEntry.header.qdcount = dnsEntry.questions.length;
     dnsEntry.header.ancount = dnsEntry.answers.length;
     dnsEntry.header.nscount = dnsEntry.authorities.length;
     dnsEntry.header.arcount = dnsEntry.additionals.length;
     Header.encode(writer, dnsEntry.header);
-    encodeSingle(writer, dnsEntry.questions, dnsEntry.errors, Question.encode);
-    encodeSingle(writer, dnsEntry.answers, dnsEntry.errors, encoder);
-    encodeSingle(writer, dnsEntry.authorities, dnsEntry.errors, encoder);
-    encodeSingle(writer, dnsEntry.additionals, dnsEntry.errors, encoder);
+    encodeSingle(
+      writer,
+      'questions',
+      dnsEntry.questions,
+      errors,
+      Question.encode,
+    );
+    encodeSingle(writer, 'answers', dnsEntry.answers, errors, encoder);
+    encodeSingle(writer, 'authorities', dnsEntry.authorities, errors, encoder);
+    encodeSingle(writer, 'additionals', dnsEntry.additionals, errors, encoder);
 
     return writer.toBuffer();
   }

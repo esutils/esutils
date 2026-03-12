@@ -1,13 +1,14 @@
-import { CLASS, TYPE } from '@esutils/dns-packet';
+import { CLASS, type DnsQuestion, TYPE } from '@esutils/dns-packet';
 
 import { queryMultipleDNS } from './dns-util';
 
 async function demoParallel() {
-  const questions = [
+  const questions: DnsQuestion[] = [
     {
       name: 'baidu.com',
       type: TYPE.A,
       class: CLASS.IN,
+      errors: [],
     },
   ];
   const dnsResultA = await queryMultipleDNS(
