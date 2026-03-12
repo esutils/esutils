@@ -1,0 +1,33 @@
+{
+  "configurations": [
+    {
+      "type": "node",
+      "name": "debug dns-proxy.ts",
+      "request": "launch",
+      "runtimeArgs": [
+        "--import=tsx"
+      ],
+      "env": {
+        "DNS_PORT": "55",
+        "DNS_ENABLE_UDP_DUMP": "1",
+      },
+      "console": "externalTerminal",
+      "cwd": "${workspaceFolder}/packages/dns-packet",
+      "program": "${workspaceFolder}/packages/dns-packet/examples/dns-proxy.ts",
+      "args": [
+        "--dns", "main", "114.114.114.114",
+        "--dns", "main", "223.5.5.5",
+        "--dns", "main", "180.76.76.76",
+        "--dns", "auxiliary", "1.1.1.1",
+        "--dns", "default", "1.1.1.1",
+        "--dns", "default", "8.8.8.8",
+        "--dns", "default", "223.5.5.5",
+        "--dns", "default", "180.76.76.76",
+        "--domain-list", "default", "examples/domain-list-main.txt",
+        "--domain-list", "main", "examples/domain-list-main.txt",
+        "--domain-list", "auxiliary", "examples/domain-list-auxiliary.txt",
+        "--log", "auxiliary", "dist-webpack/auxiliary.log"
+      ],
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { Deferred } from '@esutils/deferred';
+import {jest} from '@jest/globals'
 
 describe('Deferred in typescript', () => {
   it('constructor', () => {
@@ -37,7 +38,7 @@ describe('Deferred in typescript', () => {
       const deferred = new Deferred<string>();
       const mock = jest.spyOn(deferred, 'resolve');
       deferred.resolve('DECORATION');
-      expect(mock).toBeCalledWith('DECORATION');
+      expect(mock).toHaveBeenCalledWith('DECORATION');
     });
   });
 
@@ -83,7 +84,7 @@ describe('Deferred in typescript', () => {
       const mock = jest.spyOn(deferred, 'reject');
       deferred.promise.catch(() => {});
       deferred.reject('GODSPEED');
-      expect(mock).toBeCalledWith('GODSPEED');
+      expect(mock).toHaveBeenCalledWith('GODSPEED');
     });
   });
 
