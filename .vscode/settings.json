@@ -2,5 +2,5 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  "jest.jestCommandLine": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  "jest.jestCommandLine": "yarn test-only"
 }
