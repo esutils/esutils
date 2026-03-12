@@ -1,6 +1,6 @@
-import { BaseClient, BaseClientOptions } from '@esutils/mqtt-client';
+import { BaseClient, type BaseClientOptions } from '@esutils/mqtt-client';
 import { Deferred } from '@esutils/deferred';
-import * as net from 'net';
+import type * as net from 'net';
 
 const utf8Encoder = {
   encode(str: string): Uint8Array {
@@ -22,7 +22,7 @@ class TestClient extends BaseClient {
     this.connectionState = 'connecting';
   }
 
-  // eslint-disable-next-line class-methods-use-this
+   
   protected validateURL(url: URL) {
     if (url.protocol !== 'mqtt:') {
       throw new Error('URL protocol must be mqtt');

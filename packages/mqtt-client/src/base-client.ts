@@ -1,25 +1,25 @@
-/* eslint-disable max-classes-per-file */
+ 
 import { Deferred } from '@esutils/deferred';
 import {
-  QoS,
+  type QoS,
   encode,
-  AnyPacket,
-  IConnackPacket,
-  IPublishPacket,
-  IPubackPacket,
-  IPubrecPacket,
-  IPubrelPacket,
-  IPubcompPacket,
-  ISubscribePacket,
-  ISubackPacket,
-  IUnsubscribePacket,
-  IUnsubackPacket,
-  UTF8Encoder,
-  UTF8Decoder,
-  ISubscription,
-  ProtocolVersion,
+  type AnyPacket,
+  type IConnackPacket,
+  type IPublishPacket,
+  type IPubackPacket,
+  type IPubrecPacket,
+  type IPubrelPacket,
+  type IPubcompPacket,
+  type ISubscribePacket,
+  type ISubackPacket,
+  type IUnsubscribePacket,
+  type IUnsubackPacket,
+  type UTF8Encoder,
+  type UTF8Decoder,
+  type ISubscription,
+  type ProtocolVersion,
   decodeHeader,
-  PublishOptions,
+  type PublishOptions,
 } from '@esutils/mqtt-packet';
 
 export interface URL {
@@ -157,7 +157,7 @@ export class OutgoingMemoryStore extends OutgoingStore {
   }
 
   async* iterate(): AsyncIterable<IPublishPacket | IPubrelPacket> {
-    // eslint-disable-next-line no-restricted-syntax
+     
     for (const value of this.packets.values()) {
       yield value;
     }
@@ -375,7 +375,7 @@ export abstract class BaseClient {
   }
 
   protected async flushUnacknowledgedPublishes() {
-    // eslint-disable-next-line no-restricted-syntax
+     
     for await (const packet of this.outgoingStore.iterate()) {
       if (packet.cmd === 'publish') {
         await this.send({ ...packet, dup: true });

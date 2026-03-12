@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { DnsServerAddress } from './dns-util';
+import { type DnsServerAddress } from './dns-util';
 
 export interface DnsServerInfo {
   tag: string

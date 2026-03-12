@@ -1,5 +1,5 @@
-import { IConnackPacket, PacketOptions } from './basic';
-import { UTF8Decoder, UTF8Encoder } from './utf8';
+import { type IConnackPacket, type PacketOptions } from './basic';
+import { type UTF8Decoder, type UTF8Encoder } from './utf8';
 
 export default {
   encode(packet: IConnackPacket, _utf8Encoder: UTF8Encoder, _opts: PacketOptions) {

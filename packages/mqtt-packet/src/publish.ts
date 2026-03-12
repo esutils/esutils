@@ -1,10 +1,10 @@
 import { encodeLength } from './length';
 import {
-  checkQoS, IPublishPacket, PacketOptions, parseMessageId,
+  checkQoS, type IPublishPacket, type PacketOptions, parseMessageId,
 } from './basic';
 import {
-  UTF8Encoder,
-  UTF8Decoder,
+  type UTF8Encoder,
+  type UTF8Decoder,
   encodeUTF8String,
   decodeUTF8String,
 } from './utf8';

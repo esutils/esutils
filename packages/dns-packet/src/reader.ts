@@ -1,4 +1,4 @@
-/* eslint-disable no-bitwise */
+ 
 
 function p(a: number[]) {
   let n = 0;

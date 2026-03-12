@@ -1,10 +1,10 @@
 import {
-  checkQoS, ISubscribePacket, ISubscription, PacketOptions, parseMessageId,
+  checkQoS, type ISubscribePacket, type ISubscription, type PacketOptions, parseMessageId,
 } from './basic';
 import { encodeLength } from './length';
 import {
-  UTF8Encoder,
-  UTF8Decoder,
+  type UTF8Encoder,
+  type UTF8Decoder,
   encodeUTF8String,
   decodeUTF8String,
 } from './utf8';

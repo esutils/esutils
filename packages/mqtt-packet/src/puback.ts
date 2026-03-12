@@ -1,5 +1,5 @@
-import { IPubackPacket, PacketOptions, parseMessageId } from './basic';
-import { UTF8Decoder, UTF8Encoder } from './utf8';
+import { type IPubackPacket, type PacketOptions, parseMessageId } from './basic';
+import { type UTF8Decoder, type UTF8Encoder } from './utf8';
 
 export default {
   encode(packet: IPubackPacket, _utf8Encoder: UTF8Encoder, _opts: PacketOptions) {

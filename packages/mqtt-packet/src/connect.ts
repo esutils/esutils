@@ -5,16 +5,16 @@ import {
   checkQoS,
   decodeUint8Array,
   encodeUint8Array,
-  IConnectPacket,
-  PacketOptions,
-  QoS,
+  type IConnectPacket,
+  type PacketOptions,
+  type QoS,
 } from './basic';
 import {
-  UTF8Encoder,
-  UTF8Decoder,
+  type UTF8Encoder,
+  type UTF8Decoder,
   encodeUTF8String,
   decodeUTF8String,
-  UTF8DecodeResult,
+  type UTF8DecodeResult,
 } from './utf8';
 
 export default {

@@ -1,7 +1,7 @@
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-continue */
-/* eslint-disable no-bitwise */
-/* eslint-disable max-classes-per-file */
+ 
+ 
+ 
+ 
 import { invert } from '@esutils/invert';
 import { BufferReader } from './reader';
 import { BufferWriter } from './writer';

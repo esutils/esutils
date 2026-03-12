@@ -1,5 +1,5 @@
 import path from 'path';
-import { Configuration } from 'webpack';
+import { type Configuration } from 'webpack';
 
 const config: Configuration = {
   entry: './examples/dns-proxy.ts',

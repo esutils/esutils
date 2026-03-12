@@ -1,5 +1,5 @@
-import { IPingreqPacket, PacketOptions } from './basic';
-import { UTF8Decoder, UTF8Encoder } from './utf8';
+import { type IPingreqPacket, type PacketOptions } from './basic';
+import { type UTF8Decoder, type UTF8Encoder } from './utf8';
 
 export default {
   encode(_packet: IPingreqPacket, _utf8Encoder: UTF8Encoder, _opts: PacketOptions) {
