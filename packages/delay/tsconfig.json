@@ -1,6 +1,16 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./../../tsconfig-base.json",
   "compilerOptions": {
-    "allowJs": false,
-  }
+    "allowJs": true,
+  },
+  "include": [
+    "*.ts",
+    "examples/**/*.cjs",
+    "examples/**/*.mjs",
+    "examples/**/*.ts",
+    "src/**/*.mts",
+    "test/**/*.cjs",
+    "test/**/*.mjs",
+    "test/**/*.ts",
+  ]
 }

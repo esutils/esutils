@@ -1,5 +1,9 @@
 import path from 'path';
+import url from 'url';
 import { type Configuration } from 'webpack';
+
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const config: Configuration = {
   entry: './examples/dns-proxy.ts',
@@ -14,7 +18,7 @@ const config: Configuration = {
           fullySpecified: false,
         },
       }, {
-        test: /\.tsx?$/,
+        test: /\.m?tsx?$/,
         use: 'ts-loader',
       },
     ],
@@ -22,10 +26,10 @@ const config: Configuration = {
   // https://github.com/webpack/webpack/issues/4899#issuecomment-609737316
   devtool: 'source-map',
   resolve: {
-    extensions: ['.tsx', '.ts', '.js', '.mjs'],
+    extensions: ['.tsx', '.ts', '.mts', '.js', '.mjs'],
   },
   output: {
-    filename: 'dns-proxy.js',
+    filename: 'dns-proxy.cjs',
     path: path.resolve(__dirname, 'dist-webpack'),
   },
 };

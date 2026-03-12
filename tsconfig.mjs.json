@@ -1,0 +1,33 @@
+{
+  "files": [],
+  "references": [
+    // In topological order, so that dependencies are built before dependents.
+    {
+      "path": "./packages/async-semaphore/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/deferred/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/delay/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/invert/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/dns-packet/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/empty/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/mqtt-packet/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/mqtt-client/tsconfig.mjs.json"
+    },
+    {
+      "path": "./packages/run-command/tsconfig.mjs.json"
+    }
+  ]
+}

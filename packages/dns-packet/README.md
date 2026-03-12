@@ -6,6 +6,7 @@ This is a fork implementation of <https://github.com/lsongdev/node-dns>
 ## Building dns-proxy
 
 ```bash
+yarn build
 yarn webpack
 ```
 
@@ -14,7 +15,7 @@ yarn webpack
 ```powershell
 yarn run webpack
 $env:DNS_PORT="553"
-node dist-webpack/dns-proxy.js `
+node dist-webpack/dns-proxy.cjs `
 --dns main 114.114.114.114 `
 --dns main 223.5.5.5 `
 --dns main 180.76.76.76 `
@@ -34,8 +35,8 @@ Under Ubuntu
 
 ````bash
 sudo /sbin/setcap 'cap_net_bind_service=ep' `which node`
-node dist-webpack/dns-proxy.js  \
-yarn ts-node examples/dns-proxy.ts \
+node dist-webpack/dns-proxy.cjs  \
+node --import=tsx examples/dns-proxy.ts \
 --dns main 114.114.114.114 \
 --dns main 223.5.5.5 \
 --dns main 180.76.76.76 \
