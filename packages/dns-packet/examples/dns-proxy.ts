@@ -16,7 +16,11 @@ import {
 
 import { delay } from '@esutils/delay';
 import { queryMultipleDNS } from './dns-util';
-import { updateDomains, checkDomains, type DnsServerInfo } from './dns-proxy-utils';
+import {
+  updateDomains,
+  checkDomains,
+  type DnsServerInfo,
+} from './dns-proxy-utils';
 
 const DnsPort = parseInt(process.env.DNS_PORT ?? '53', 10);
 
@@ -133,14 +137,15 @@ async function startDnsServer() {
   server.on('message', async (message: Buffer, rinfo) => {
     const request = Packet.decode(message as Uint8Array, decodeResponseDefault);
     const questions = request.questions.filter(
-      (x) => x.type === TYPE.A
-        || x.type === TYPE.AAAA
-        || x.type === TYPE.CNAME
-        || x.type === TYPE.DNAME
-        || x.type === TYPE.HTTPS
-        || x.type === TYPE.SVCB
-        || x.type === TYPE.NAPTR
-        || x.type === TYPE.PTR,
+      (x) =>
+        x.type === TYPE.A ||
+        x.type === TYPE.AAAA ||
+        x.type === TYPE.CNAME ||
+        x.type === TYPE.DNAME ||
+        x.type === TYPE.HTTPS ||
+        x.type === TYPE.SVCB ||
+        x.type === TYPE.NAPTR ||
+        x.type === TYPE.PTR,
     );
     const response: DnsPacket = {
       header: request.header,
@@ -168,8 +173,8 @@ async function startDnsServer() {
             const responseCurrent = serverCurrent.result?.packet;
             if (responseCurrent) {
               if (
-                responseCurrent.answers.length > 0
-                || responseCurrent.authorities.length > 0
+                responseCurrent.answers.length > 0 ||
+                responseCurrent.authorities.length > 0
               ) {
                 response.header = JSON.parse(
                   JSON.stringify(responseCurrent.header),
@@ -270,7 +275,9 @@ async function startDnsServer() {
         }
       }
     } else {
-      console.log(`The questions count is 0 for ${message.toString('hex')} ${JSON.stringify(request.questions)}`);
+      console.log(
+        `The questions count is 0 for ${message.toString('hex')} ${JSON.stringify(request.questions)}`,
+      );
     }
     // console.log(`The naswer is: ${JSON.stringify(response.answers)}`);
     const responseBuffer = Packet.encode(response, encodeResponseDefault);

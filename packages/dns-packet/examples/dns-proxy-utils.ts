@@ -2,13 +2,16 @@ import * as fs from 'fs';
 import { type DnsServerAddress } from './dns-util';
 
 export interface DnsServerInfo {
-  tag: string
-  log?: string
-  logFile?: fs.promises.FileHandle
-  dnsList: DnsServerAddress[]
+  tag: string;
+  log?: string;
+  logFile?: fs.promises.FileHandle;
+  dnsList: DnsServerAddress[];
 }
 
-export function updateDomainsFromLine(domains: Record<string, boolean | string>, line: string) {
+export function updateDomainsFromLine(
+  domains: Record<string, boolean | string>,
+  line: string,
+) {
   const domainMap = line.trim().split(' ');
   if (domainMap.length === 1) {
     domains[domainMap[0]] = true;
@@ -18,7 +21,10 @@ export function updateDomainsFromLine(domains: Record<string, boolean | string>,
   }
 }
 
-export function updateDomains(domains: Record<string, boolean | string>, filePath: string) {
+export function updateDomains(
+  domains: Record<string, boolean | string>,
+  filePath: string,
+) {
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split(/\r\n|\n\r|\n|\r/);
   for (let i = 0; i < lines.length; i += 1) {
@@ -26,7 +32,10 @@ export function updateDomains(domains: Record<string, boolean | string>, filePat
   }
 }
 
-export function checkDomains(domains: Record<string, boolean | string>, domainItems: string[]) {
+export function checkDomains(
+  domains: Record<string, boolean | string>,
+  domainItems: string[],
+) {
   // Support matching both python.org and .python.org
   const fullDomain = domainItems.join('.');
   if (Object.hasOwn(domains, fullDomain)) {
