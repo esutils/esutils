@@ -9,9 +9,9 @@ export class BufferWriter {
   }
 
   /**
-   * [write description]
+   * write a number and append to the bit array buffer
    * @param  {[type]} d    [description]
-   * @param  {[type]} size [description]
+   * @param  {[type]} size in bits
    * @return {[type]}      [description]
    */
   write(d: number, size: number) {
@@ -20,9 +20,16 @@ export class BufferWriter {
     }
   }
 
-  update(offset: number, d: number, size:number) {
+  /**
+   * write a number at offset to the bit array buffer
+   * @param  {[type]} offset [description]
+   * @param  {[type]} d      [description]
+   * @param  {[type]} size in bits
+   * @return none
+   */
+  update(offset: number, d: number, size: number) {
     for (let i = 0; i < size; i += 1) {
-      this.buffer[offset + i] = (d & (2 ** (size - i - 1)) ? 1 : 0);
+      this.buffer[offset + i] = d & (2 ** (size - i - 1)) ? 1 : 0;
     }
   }
 
