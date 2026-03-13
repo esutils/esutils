@@ -1,5 +1,4 @@
-
-function p(a: number[]) {
+function BitArrayToNumber(a: number[]) {
   let n = 0;
   const f = a.length - 1;
   for (let i = f; i >= 0; i -= 1) {
@@ -38,7 +37,7 @@ export class BufferReader {
     function t(n: number) {
       const r = [0, 0, 0, 0, 0, 0, 0, 0];
       for (let i = 7; i >= 0; i -= 1) {
-        r[7 - i] = n & 2 ** i ? 1 : 0;
+        r[7 - i] = n & (2 ** i) ? 1 : 0;
       }
       a = a.concat(r);
     }
@@ -48,13 +47,14 @@ export class BufferReader {
       buffer.byteLength,
     );
     while (c--) t(view.getUint8(l++));
-    return p(a.slice(m, m + length));
+    return BitArrayToNumber(a.slice(m, m + length));
   }
 
   /**
-   * [read description]
-   * @param  {[type]} size [description]
-   * @return {[type]}      [description]
+   * This method reads @size of bits from the buffer and advances the offset accordingly.
+   * The readed bits are converted to a number and returned.
+   * @param size in bits
+   * @returns The value at the current offset
    */
   read(size: number) {
     const val = BufferReader.read(this.buffer, this.offset, size);
