@@ -95,35 +95,35 @@ export interface DnsBasic {
 
 export interface DnsQuestion extends DnsBasic {}
 
-export interface DnsResponse extends DnsBasic {
+export interface DnsResource extends DnsBasic {
   ttl: number;
 }
 
-export interface DnsResponseAddress extends DnsResponse {
+export interface DnsResourceAddress extends DnsResource {
   address: string;
 }
 
-export interface DnsResponseA extends DnsResponseAddress {}
+export interface DnsResourceA extends DnsResourceAddress {}
 
-export interface DnsResponseMX extends DnsResponse {
+export interface DnsResourceMX extends DnsResource {
   exchange: string;
   priority: number;
 }
 
-export interface DnsResponseAAAA extends DnsResponseAddress {}
+export interface DnsResourceAAAA extends DnsResourceAddress {}
 
-export interface DnsResponseNS extends DnsResponse {
+export interface DnsResourceNS extends DnsResource {
   ns: string;
 }
 
-export interface DnsResponseCNAME extends DnsResponse {
+export interface DnsResourceCNAME extends DnsResource {
   domain: string;
 }
 
-export interface DnsResponseSPF extends DnsResponse {
+export interface DnsResourceSPF extends DnsResource {
   data: string;
 }
-export interface DnsResponseSOA extends DnsResponse {
+export interface DnsResourceSOA extends DnsResource {
   primary: string;
   admin: string;
   serial: number;
@@ -132,7 +132,7 @@ export interface DnsResponseSOA extends DnsResponse {
   expiration: number;
   minimum: number;
 }
-export interface DnsResponseSRV extends DnsResponse {
+export interface DnsResourceSRV extends DnsResource {
   priority: number;
   weight: number;
   port: number;
@@ -301,7 +301,7 @@ export class Resource {
    * @param  info   [description]
    * @return The offset of the reserved 16 bits for resource body length
    */
-  static encode(writer: BufferWriter, info: DnsResponse) {
+  static encode(writer: BufferWriter, info: DnsResource) {
     Name.encode(info.name, writer);
     writer.write(info.type, 16);
     writer.write(info.class, 16);
@@ -322,7 +322,7 @@ export class Resource {
    * @param  {[type]} reader [description]
    * @return The length of the resource body
    */
-  static decode(reader: BufferReader, info: DnsResponse) {
+  static decode(reader: BufferReader, info: DnsResource) {
     info.name = Name.decode(reader);
     info.type = reader.read(16);
     info.class = reader.read(16);
@@ -337,7 +337,7 @@ export class Resource {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.4.1
  */
 export class ResourceA {
-  static encode(writer: BufferWriter, info: DnsResponseA) {
+  static encode(writer: BufferWriter, info: DnsResourceA) {
     const offset = Resource.encode(writer, info);
     const parts = info.address.split('.');
     parts.forEach((part) => {
@@ -346,7 +346,7 @@ export class ResourceA {
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResponseA) {
+  static decode(reader: BufferReader, length: number, info: DnsResourceA) {
     const parts = [];
     while (length > 0) {
       length -= 1;
@@ -362,7 +362,7 @@ export class ResourceA {
  * @docs https://en.wikipedia.org/wiki/IPv6
  */
 export class ResourceAAAA {
-  static encode(writer: BufferWriter, info: DnsResponseAAAA) {
+  static encode(writer: BufferWriter, info: DnsResourceAAAA) {
     const offset = Resource.encode(writer, info);
     const parts = info.address.split(':');
     parts.forEach((part) => {
@@ -371,7 +371,7 @@ export class ResourceAAAA {
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResponseAAAA) {
+  static decode(reader: BufferReader, length: number, info: DnsResourceAAAA) {
     const parts = [];
     while (length) {
       length -= 2;
@@ -389,13 +389,13 @@ export class ResourceAAAA {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.1
  */
 export class ResourceCNAME {
-  static encode(writer: BufferWriter, info: DnsResponseCNAME) {
+  static encode(writer: BufferWriter, info: DnsResourceCNAME) {
     const offset = Resource.encode(writer, info);
     Name.encode(info.domain, writer);
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, _length: number, info: DnsResponseCNAME) {
+  static decode(reader: BufferReader, _length: number, info: DnsResourceCNAME) {
     info.domain = Name.decode(reader);
   }
 }
@@ -407,14 +407,14 @@ export class ResourceCNAME {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.9
  */
 export class ResourceMX {
-  static encode(writer: BufferWriter, info: DnsResponseMX) {
+  static encode(writer: BufferWriter, info: DnsResourceMX) {
     const offset = Resource.encode(writer, info);
     writer.write(info.priority, 16);
     Name.encode(info.exchange, writer);
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResponseMX) {
+  static decode(reader: BufferReader, length: number, info: DnsResourceMX) {
     info.priority = reader.read(16);
     info.exchange = Name.decode(reader);
   }
@@ -426,19 +426,19 @@ export class ResourceMX {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.11
  */
 export class ResourceNS {
-  static encode(writer: BufferWriter, info: DnsResponseNS) {
+  static encode(writer: BufferWriter, info: DnsResourceNS) {
     const offset = Resource.encode(writer, info);
     Name.encode(info.ns, writer);
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResponseNS) {
+  static decode(reader: BufferReader, length: number, info: DnsResourceNS) {
     info.ns = Name.decode(reader);
   }
 }
 
 export class ResourceSPF {
-  static encode(writer: BufferWriter, info: DnsResponseAAAA) {
+  static encode(writer: BufferWriter, info: DnsResourceAAAA) {
     const offset = Resource.encode(writer, info);
     /*
     writer = writer || new Packet.Writer();
@@ -483,7 +483,7 @@ export class ResourceSPF {
   static decode(
     _reader: BufferReader,
     _length: number,
-    _info: DnsResponseAAAA,
+    _info: DnsResourceAAAA,
   ) {
     /*
     const parts = [];
@@ -506,7 +506,7 @@ export class ResourceSPF {
 }
 
 export class ResourceSOA {
-  static encode(writer: BufferWriter, info: DnsResponseSOA) {
+  static encode(writer: BufferWriter, info: DnsResourceSOA) {
     const offset = Resource.encode(writer, info);
     Name.encode(info.primary, writer);
     Name.encode(info.admin, writer);
@@ -518,7 +518,7 @@ export class ResourceSOA {
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, _length: number, info: DnsResponseSOA) {
+  static decode(reader: BufferReader, _length: number, info: DnsResourceSOA) {
     info.primary = Name.decode(reader);
     info.admin = Name.decode(reader);
     info.serial = reader.read(32);
@@ -530,7 +530,7 @@ export class ResourceSOA {
 }
 
 export class ResourceSRV {
-  static encode(writer: BufferWriter, info: DnsResponseSRV) {
+  static encode(writer: BufferWriter, info: DnsResourceSRV) {
     const offset = Resource.encode(writer, info);
     writer.write(info.priority, 16);
     writer.write(info.weight, 16);
@@ -539,7 +539,7 @@ export class ResourceSRV {
     Resource.encodeLength(writer, offset);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResponseSRV) {
+  static decode(reader: BufferReader, length: number, info: DnsResourceSRV) {
     info.priority = reader.read(16);
     info.weight = reader.read(16);
     info.port = reader.read(16);
@@ -548,7 +548,7 @@ export class ResourceSRV {
 }
 
 export class ResourceEDNS {
-  static encode(writer: BufferWriter, info: DnsResponseAAAA) {
+  static encode(writer: BufferWriter, info: DnsResourceAAAA) {
     const offset = Resource.encode(writer, info);
     /*
   const rdataWriter = new Packet.Writer();
@@ -577,7 +577,7 @@ export class ResourceEDNS {
   static decode(
     _reader: BufferReader,
     _length: number,
-    _info: DnsResponseAAAA,
+    _info: DnsResourceAAAA,
   ) {
     /*
   this.type = Packet.TYPE.EDNS;
@@ -627,9 +627,9 @@ export function createDnsBasic(): DnsBasic {
 export interface DnsPacket {
   header: HeaderInfo;
   questions: DnsQuestion[];
-  answers: DnsResponse[];
-  authorities: DnsResponse[];
-  additionals: DnsResponse[];
+  answers: DnsResource[];
+  authorities: DnsResource[];
+  additionals: DnsResource[];
   errors: Error[];
 }
 
@@ -666,52 +666,52 @@ function encodeSingle(
   }
 }
 
-export function encodeResponseDefault(writer: BufferWriter, info: DnsBasic) {
+export function encodeResourceDefault(writer: BufferWriter, info: DnsBasic) {
   switch (info.type) {
     case TYPE.A:
-      ResourceA.encode(writer, info as DnsResponseA);
+      ResourceA.encode(writer, info as DnsResourceA);
       break;
     case TYPE.AAAA:
-      ResourceAAAA.encode(writer, info as DnsResponseAAAA);
+      ResourceAAAA.encode(writer, info as DnsResourceAAAA);
       break;
     case TYPE.CNAME:
     case TYPE.DNAME:
     case TYPE.PTR:
-      ResourceCNAME.encode(writer, info as DnsResponseCNAME);
+      ResourceCNAME.encode(writer, info as DnsResourceCNAME);
       break;
     case TYPE.SOA:
-      ResourceSOA.encode(writer, info as DnsResponseSOA);
+      ResourceSOA.encode(writer, info as DnsResourceSOA);
       break;
     default:
       throw new Error(
-        `encodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
+        `encodeResourceDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
       );
   }
 }
 
-export function decodeResponseDefault(reader: BufferReader, info: DnsBasic) {
-  const length = Resource.decode(reader, info as DnsResponse);
+export function decodeResourceDefault(reader: BufferReader, info: DnsBasic) {
+  const length = Resource.decode(reader, info as DnsResource);
   switch (info.type) {
     case TYPE.A:
-      ResourceA.decode(reader, length, info as DnsResponseA);
+      ResourceA.decode(reader, length, info as DnsResourceA);
       break;
     case TYPE.AAAA:
-      ResourceAAAA.decode(reader, length, info as DnsResponseAAAA);
+      ResourceAAAA.decode(reader, length, info as DnsResourceAAAA);
       break;
     case TYPE.CNAME:
     case TYPE.DNAME:
     case TYPE.PTR:
-      ResourceCNAME.decode(reader, length, info as DnsResponseCNAME);
+      ResourceCNAME.decode(reader, length, info as DnsResourceCNAME);
       break;
     case TYPE.SOA:
-      ResourceSOA.decode(reader, length, info as DnsResponseSOA);
+      ResourceSOA.decode(reader, length, info as DnsResourceSOA);
       break;
     default: {
       for (let lengthToRead = length; lengthToRead > 0; lengthToRead -= 1) {
         reader.read(8);
       }
       throw new Error(
-        `decodeResponseDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
+        `decodeResourceDefault Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
       );
     }
   }

@@ -7,11 +7,11 @@ import {
   Question,
   CLASS,
   TYPE,
-  type DnsResponseA,
-  type DnsResponseAAAA,
+  type DnsResourceA,
+  type DnsResourceAAAA,
   Packet,
-  encodeResponseDefault,
-  decodeResponseDefault,
+  encodeResourceDefault,
+  decodeResourceDefault,
 } from '@esutils/dns-packet';
 
 function dnsLiteralToUint8Array(arr: (number | string)[]) {
@@ -139,11 +139,11 @@ describe('dns-packet in typescript', () => {
   });
 
   test('Packet#decode', () => {
-    const packet = Packet.decode(response, decodeResponseDefault);
+    const packet = Packet.decode(response, decodeResourceDefault);
     assert.equal(packet.questions[0].name, 'www.z.cn');
     assert.equal(packet.questions[0].type, TYPE.A);
     assert.equal(packet.questions[0].class, CLASS.IN);
-    const answers = packet.answers as DnsResponseA[];
+    const answers = packet.answers as DnsResourceA[];
     assert.equal(answers[0].class, TYPE.A);
     assert.equal(answers[0].class, CLASS.IN);
     assert.equal(answers[0].address, '54.222.60.252');
@@ -153,7 +153,7 @@ describe('dns-packet in typescript', () => {
     const packet = Packet.create();
     //
     packet.header.qr = 1;
-    (packet.answers as DnsResponseA[]).push({
+    (packet.answers as DnsResourceA[]).push({
       name: 'lsong.org',
       type: TYPE.A,
       class: CLASS.IN,
@@ -161,15 +161,15 @@ describe('dns-packet in typescript', () => {
       address: '127.0.0.1',
     });
 
-    (packet.answers as DnsResponseAAAA[]).push({
+    (packet.answers as DnsResourceAAAA[]).push({
       name: 'lsong.org',
       type: TYPE.AAAA,
       class: CLASS.IN,
       ttl: 300,
       address: '2001:db8::::ff00:42:8329',
     });
-    const encoded = Packet.encode(packet, encodeResponseDefault);
-    assert.deepEqual(Packet.decode(encoded, decodeResponseDefault), packet);
+    const encoded = Packet.encode(packet, encodeResourceDefault);
+    assert.deepEqual(Packet.decode(encoded, decodeResourceDefault), packet);
   });
 
   it('Packet#decode#random', () => {
@@ -177,7 +177,7 @@ describe('dns-packet in typescript', () => {
       '82d90100000100000000000003626167066974756e6573056170706c6503636f6d0000410001',
       'hex',
     ) as Uint8Array;
-    assert.deepEqual(Packet.decode(buf0, decodeResponseDefault), {
+    assert.deepEqual(Packet.decode(buf0, decodeResourceDefault), {
       additionals: [],
       answers: [],
       authorities: [],
@@ -204,7 +204,7 @@ describe('dns-packet in typescript', () => {
       'b90801000001000000000000045f646e73087265736f6c76657204617270610000400001',
       'hex',
     ) as Uint8Array;
-    assert.deepEqual(Packet.decode(buf1, decodeResponseDefault), {
+    assert.deepEqual(Packet.decode(buf1, decodeResourceDefault), {
       additionals: [],
       answers: [],
       authorities: [],
@@ -231,7 +231,7 @@ describe('dns-packet in typescript', () => {
       '8e6f010000010000000000000873697064627a30360572637330310335676d02776f02636e0000230001',
       'hex',
     ) as Uint8Array;
-    assert.deepEqual(Packet.decode(buf2, decodeResponseDefault), {
+    assert.deepEqual(Packet.decode(buf2, decodeResourceDefault), {
       additionals: [],
       answers: [],
       authorities: [],
