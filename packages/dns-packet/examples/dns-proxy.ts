@@ -4,13 +4,13 @@ import * as net from 'net';
 
 import {
   CLASS,
-  decodeResponseDefault,
+  decodeResourceDefault,
   type DnsPacket,
-  type DnsResponse,
-  type DnsResponseA,
-  type DnsResponseAddress,
+  type DnsResource,
+  type DnsResourceA,
+  type DnsResourceAddress,
   type HeaderInfo,
-  encodeResponseDefault,
+  encodeResourceDefault,
   Packet,
   TYPE,
 } from '@esutils/dns-packet';
@@ -141,7 +141,7 @@ async function startDnsServer() {
     message: Buffer,
     rinfo: udp.RemoteInfo,
   ) {
-    const request = Packet.decode(message as Uint8Array, decodeResponseDefault);
+    const request = Packet.decode(message as Uint8Array, decodeResourceDefault);
     const questions = request.questions.filter(
       (x) =>
         x.type === TYPE.A ||
@@ -231,12 +231,12 @@ async function startDnsServer() {
           }
         }
 
-        const answersFiltered: DnsResponse[] = [];
+        const answersFiltered: DnsResource[] = [];
         let newAnswerLog = `${name} ${dnsResult.address.ip} addrs:`;
         for (let i = 0; i < response.answers.length; i += 1) {
           const answer = response.answers[i];
           if (answer.type === TYPE.A || answer.type === TYPE.AAAA) {
-            const answerIp = answer as DnsResponseAddress;
+            const answerIp = answer as DnsResourceAddress;
             newAnswerLog = `${newAnswerLog} ${answerIp.address}`;
             if (dnsServer.resolved === true) {
               answersFiltered.push(answer);
@@ -251,7 +251,7 @@ async function startDnsServer() {
           for (let pi = 0; pi < ipList.length; pi += 1) {
             const ip = ipList[pi];
             if (net.isIP(ip) > 0) {
-              const addr: DnsResponseA = {
+              const addr: DnsResourceA = {
                 name,
                 type: net.isIPv6(ip) ? TYPE.AAAA : TYPE.A,
                 class: CLASS.IN,
@@ -286,7 +286,7 @@ async function startDnsServer() {
       );
     }
     // console.log(`The naswer is: ${JSON.stringify(response.answers)}`);
-    const responseBuffer = Packet.encode(response, encodeResponseDefault);
+    const responseBuffer = Packet.encode(response, encodeResourceDefault);
     server.send(responseBuffer, rinfo.port, rinfo.address);
   }
 

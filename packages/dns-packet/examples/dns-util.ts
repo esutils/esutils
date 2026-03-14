@@ -1,10 +1,10 @@
 import * as udp from 'dgram';
 
 import {
-  decodeResponseDefault,
+  decodeResourceDefault,
   type DnsPacket,
   type DnsQuestion,
-  encodeResponseDefault,
+  encodeResourceDefault,
   Packet,
 } from '@esutils/dns-packet';
 
@@ -90,7 +90,7 @@ export async function queryDNS(
       done(timer);
       resolveWith({
         type: 'Normal',
-        packet: Packet.decode(message, decodeResponseDefault),
+        packet: Packet.decode(message, decodeResourceDefault),
         error: null,
       });
     });
@@ -100,7 +100,7 @@ export async function queryDNS(
     });
     server.client.once('error', (error) => raiseError(timer, 'SocketError', error));
     // DNS request timeout to 10 seconds
-    const buf = Packet.encode(query, encodeResponseDefault);
+    const buf = Packet.encode(query, encodeResourceDefault);
     server.client.send(buf, server.address.port, server.address.ip, (err) => {
       if (err) {
         raiseError(timer, 'SendError', err);
