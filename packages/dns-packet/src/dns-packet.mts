@@ -340,9 +340,9 @@ export class ResourceA {
   static encode(writer: BufferWriter, info: DnsResourceA) {
     const offset = Resource.encode(writer, info);
     const parts = info.address.split('.');
-    parts.forEach((part) => {
+    for (const part of parts) {
       writer.write(parseInt(part, 10), 8);
-    });
+    }
     Resource.encodeLength(writer, offset);
   }
 
@@ -365,9 +365,9 @@ export class ResourceAAAA {
   static encode(writer: BufferWriter, info: DnsResourceAAAA) {
     const offset = Resource.encode(writer, info);
     const parts = info.address.split(':');
-    parts.forEach((part) => {
+    for (const part of parts) {
       writer.write(parseInt(part, 16), 16);
-    });
+    }
     Resource.encodeLength(writer, offset);
   }
 
