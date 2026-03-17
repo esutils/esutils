@@ -15,3 +15,13 @@ export function invert<T extends Record<PropertyKey, PropertyKey>>(
   }
   return retobj;
 }
+
+export function invertValues<T extends object>(
+  obj: T,
+): T[keyof T][] {
+  const values = [] as T[keyof T][];
+  for (const key in obj) {
+    values.push(obj[key]);
+  }
+  return values;
+}
