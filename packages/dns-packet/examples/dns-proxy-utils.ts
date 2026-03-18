@@ -1,11 +1,11 @@
 import * as fs from 'fs';
-import { type DnsServerAddress } from './dns-util';
+import { type DnsQueryServerAddress } from './dns-basic';
 
 export interface DnsServerInfo {
   tag: string;
   log?: string;
   logFile?: fs.promises.FileHandle;
-  dnsList: DnsServerAddress[];
+  dnsList: DnsQueryServerAddress[];
 }
 
 export interface DnsServerInfoFound {

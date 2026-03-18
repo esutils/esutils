@@ -8,6 +8,8 @@ import {
   Packet,
 } from '@esutils/dns-packet';
 
+import { type DnsQueryServerAddress } from './dns-basic';
+
 export type DnsPacketErrorType =
   | 'Normal' // means not a error
   | 'Timeout'
@@ -20,13 +22,8 @@ export interface QueryDnsResult {
   error: Error | null;
 }
 
-export interface DnsServerAddress {
-  ip: string;
-  port: number;
-}
-
 export interface DnsResponse {
-  address: DnsServerAddress;
+  address: DnsQueryServerAddress;
   client: udp.Socket;
   closed: boolean;
   name: string;
@@ -114,7 +111,7 @@ export async function queryDNS(
 }
 
 export async function queryMultipleDNS(
-  serverAddresses: DnsServerAddress[],
+  serverAddresses: DnsQueryServerAddress[],
   questions: DnsQuestion[],
   timeout: number,
 ): Promise<QueryDnsFinalResult> {
