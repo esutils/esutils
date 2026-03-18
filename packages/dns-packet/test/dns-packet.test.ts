@@ -135,6 +135,7 @@ describe('dns-packet in typescript', () => {
       name: 'google.com',
       type: TYPE.A,
       class: CLASS.IN,
+      errors: [],
     });
   });
 
@@ -157,6 +158,7 @@ describe('dns-packet in typescript', () => {
       name: 'lsong.org',
       type: TYPE.A,
       class: CLASS.IN,
+      errors: [],
       ttl: 300,
       address: '127.0.0.1',
     });
@@ -165,6 +167,7 @@ describe('dns-packet in typescript', () => {
       name: 'lsong.org',
       type: TYPE.AAAA,
       class: CLASS.IN,
+      errors: [],
       ttl: 300,
       address: '2001:db8::::ff00:42:8329',
     });
@@ -197,7 +200,9 @@ describe('dns-packet in typescript', () => {
         tc: 0,
         z: 0,
       },
-      questions: [{ class: 1, name: 'bag.itunes.apple.com', type: 65 }],
+      questions: [
+        { class: 1, name: 'bag.itunes.apple.com', type: 65, errors: [] },
+      ],
     });
 
     const buf1 = Buffer.from(
@@ -224,7 +229,9 @@ describe('dns-packet in typescript', () => {
         tc: 0,
         z: 0,
       },
-      questions: [{ class: 1, name: '_dns.resolver.arpa', type: 64 }],
+      questions: [
+        { class: 1, name: '_dns.resolver.arpa', type: 64, errors: [] },
+      ],
     });
 
     const buf2 = Buffer.from(
@@ -251,7 +258,9 @@ describe('dns-packet in typescript', () => {
         tc: 0,
         z: 0,
       },
-      questions: [{ class: 1, name: 'sipdbz06.rcs01.5gm.wo.cn', type: 35 }],
+      questions: [
+        { class: 1, name: 'sipdbz06.rcs01.5gm.wo.cn', type: 35, errors: [] },
+      ],
     });
   });
 });
