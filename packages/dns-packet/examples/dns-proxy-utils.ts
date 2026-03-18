@@ -28,6 +28,15 @@ export interface DnsServerDomainList {
   tag: string;
 }
 
+export interface DnsResponse {
+  serverAddress: DnsQueryServerAddress;
+
+  errors: string[];
+  response?: DnsPacket;
+  responseBuffer?: Uint8Array;
+  error?: Error;
+}
+
 export function updateDomainsFromLine(
   domains: Record<string, boolean | string>,
   line: string,
@@ -99,6 +108,36 @@ export function getDnsServerInfo(domain: string): DnsServerInfoFound {
   return {
     server: AllDnsServerInfo.default,
   };
+}
+
+export function dnsResponsesSort(dnsResponses: DnsResponse[]) {
+  return dnsResponses
+    .map((_, index) => index)
+    .sort((a, b) => {
+      const dnsResponseA = dnsResponses[a];
+      const dnsResponseB = dnsResponses[b];
+      if (!!dnsResponseA.response !== !!dnsResponseB.response) {
+        return dnsResponseA.response ? -1 : 1;
+      }
+      if (dnsResponseA.response && dnsResponseB.response) {
+        const packetA = dnsResponseA.response;
+        const packetB = dnsResponseB.response;
+        if (packetA.answers.length !== packetB.answers.length) {
+          return packetB.answers.length - packetA.answers.length;
+        }
+        if (packetA.authorities.length !== packetB.authorities.length) {
+          return packetB.authorities.length - packetA.authorities.length;
+        }
+        if (packetA.additionals.length !== packetB.additionals.length) {
+          return packetB.additionals.length - packetA.additionals.length;
+        }
+        return a - b;
+      }
+      if (!!dnsResponseA.responseBuffer !== !!dnsResponseB.responseBuffer) {
+        return dnsResponseA.responseBuffer ? -1 : 1;
+      }
+      return a - b;
+    });
 }
 
 export function dnsResponseAnswerUpdate(
