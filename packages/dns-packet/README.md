@@ -33,7 +33,7 @@ node dist-webpack/dns-proxy.cjs `
 
 Under Ubuntu
 
-````bash
+```bash
 sudo /sbin/setcap 'cap_net_bind_service=ep' `which node`
 node dist-webpack/dns-proxy.cjs  \
 node --import=tsx examples/dns-proxy.ts \
@@ -55,3 +55,7 @@ dig mirrors.tuna.tsinghua.edu.cn @127.0.0.1
 dig github.com @127.0.0.1
 dig python.com @127.0.0.1
 ```
+
+## TODO list
+
+* Add tcp listen support, for `nslookup -port=53 -type=any google.com  8.8.8.8`
