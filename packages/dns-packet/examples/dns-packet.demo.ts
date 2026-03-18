@@ -1,6 +1,6 @@
 import { CLASS, TYPE } from '@esutils/dns-packet';
 
-import { queryMultipleDNS } from './dns-util';
+import { queryDnsParallel } from './dns-util';
 
 async function demoParallel() {
   const questions = [
@@ -11,7 +11,7 @@ async function demoParallel() {
       errors: [],
     },
   ];
-  const dnsResultA = await queryMultipleDNS(
+  const dnsResultA = await queryDnsParallel(
     [
       {
         ip: '1.1.1.1',
@@ -27,7 +27,7 @@ async function demoParallel() {
   );
   console.log(JSON.stringify(dnsResultA));
   // 180.76.76.76
-  const dnsResultB = await queryMultipleDNS(
+  const dnsResultB = await queryDnsParallel(
     [
       {
         ip: '114.114.114.114',

@@ -16,7 +16,7 @@ import {
 } from '@esutils/dns-packet';
 
 import { delay } from '@esutils/delay';
-import { queryMultipleDNS } from './dns-util';
+import { queryDnsParallel } from './dns-util';
 import {
   updateDomains,
   AllDomainList,
@@ -132,7 +132,7 @@ async function startDnsServer() {
       try {
         const { name } = questions[0];
         const dnsServer = getDnsServerInfo(name);
-        const queryFinalResult = await queryMultipleDNS(
+        const queryFinalResult = await queryDnsParallel(
           dnsServer.server.dnsList,
           questions,
           1000,
