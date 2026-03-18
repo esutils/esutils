@@ -40,7 +40,7 @@ export interface QueryDnsFinalResult {
   state: QueryDnsState;
 }
 
-export async function queryDNS(
+export async function queryDns(
   server: DnsResponse,
   questions: DnsQuestion[],
   timeout: number,
@@ -110,7 +110,7 @@ export async function queryDNS(
   });
 }
 
-export async function queryMultipleDNS(
+export async function queryDnsParallel(
   serverAddresses: DnsQueryServerAddress[],
   questions: DnsQuestion[],
   timeout: number,
@@ -129,7 +129,7 @@ export async function queryMultipleDNS(
       result: undefined,
     };
     state.servers.push(serverInfo);
-    state.promises.push(queryDNS(serverInfo, questions, timeout));
+    state.promises.push(queryDns(serverInfo, questions, timeout));
   }
   const result = await Promise.any(state.promises);
   return {
