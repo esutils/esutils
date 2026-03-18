@@ -3,11 +3,10 @@ import * as net from 'net';
 
 import {
   CLASS,
-  type DnsResourceA,
   type DnsResourceAddress,
   TYPE,
   type DnsPacket,
-  type DnsResource,
+  TYPE_INVERTED,
 } from '@esutils/dns-packet';
 
 import { type DnsQueryServerAddress } from './dns-basic';
@@ -20,7 +19,7 @@ export interface DnsServerInfo {
 }
 
 export interface DnsServerInfoFound {
-  resolved: boolean | string;
+  resolved?: string;
   server: DnsServerInfo;
 }
 
@@ -86,7 +85,11 @@ export function getDnsServerInfo(domain: string): DnsServerInfoFound {
   const domainItems = domain.split('.');
   for (let i = 0; i < AllDomainList.length; i += 1) {
     const resolved = checkDomains(AllDomainList[i].domains, domainItems);
-    if (resolved) {
+    if (resolved === true) {
+      return {
+        server: AllDnsServerInfo[AllDomainList[i].tag],
+      };
+    } else if (typeof resolved === 'string') {
       return {
         resolved,
         server: AllDnsServerInfo[AllDomainList[i].tag],
@@ -94,7 +97,6 @@ export function getDnsServerInfo(domain: string): DnsServerInfoFound {
     }
   }
   return {
-    resolved: true,
     server: AllDnsServerInfo.default,
   };
 }
@@ -106,27 +108,17 @@ export function dnsResponseAnswerUpdate(
   dnsServer: DnsServerInfoFound,
   address: DnsQueryServerAddress,
 ) {
-  const answersFiltered: DnsResource[] = [];
-  let newAnswerLog = `${name} ${address.ip} addrs:`;
-  for (let i = 0; i < response.answers.length; i += 1) {
-    const answer = response.answers[i];
-    if (answer.type === TYPE.A || answer.type === TYPE.AAAA) {
-      const answerIp = answer as DnsResourceAddress;
-      newAnswerLog = `${newAnswerLog} ${answerIp.address}`;
-      if (dnsServer.resolved === true) {
-        answersFiltered.push(answer);
-      }
-    } else {
-      answersFiltered.push(answer);
-    }
-  }
-  if (typeof dnsServer.resolved === 'string') {
+  const DnsRecordTypeCanResolve = [TYPE.A, TYPE.AAAA, TYPE.ANY];
+  if (
+    dnsServer.resolved &&
+    DnsRecordTypeCanResolve.indexOf(questionType) >= 0
+  ) {
     // 39.156.66.10;110.242.68.66
     const ipList = dnsServer.resolved.split(';');
     for (let pi = 0; pi < ipList.length; pi += 1) {
       const ip = ipList[pi];
       if (net.isIP(ip) > 0) {
-        const addr: DnsResourceA = {
+        const addr: DnsResourceAddress = {
           name,
           type: net.isIPv6(ip) ? TYPE.AAAA : TYPE.A,
           class: CLASS.IN,
@@ -134,14 +126,30 @@ export function dnsResponseAnswerUpdate(
           ttl: 300,
           errors: [],
         };
-        answersFiltered.push(addr);
+        if (questionType === addr.type || questionType === TYPE.ANY) {
+          // The address of custom resolved place at the beginnning
+          response.answers.unshift(addr);
+        }
       }
     }
-    newAnswerLog = `${newAnswerLog} override with:${dnsServer.resolved}\n`;
     response.header.rcode = 0;
-  } else {
-    newAnswerLog = `${newAnswerLog}\n`;
   }
-  response.answers = answersFiltered;
+  const ipv4Addresses: string[] = [];
+  const ipv6Addresses: string[] = [];
+  for (const answer of response.answers) {
+    const address = (answer as DnsResourceAddress).address;
+    if (answer.type === TYPE.A) {
+      ipv4Addresses.push(address);
+    } else if (answer.type === TYPE.AAAA) {
+      ipv6Addresses.push(address);
+    }
+  }
+  let newAnswerLog = '';
+  if (questionType === TYPE.A || questionType === TYPE.ANY) {
+    newAnswerLog += `${[address.ip, name, TYPE_INVERTED[questionType], ipv4Addresses.join(';')].join(',')}\n`;
+  }
+  if (questionType === TYPE.AAAA || questionType === TYPE.ANY) {
+    newAnswerLog += `${[address.ip, name, TYPE_INVERTED[questionType], ipv6Addresses.join(';')].join(',')}\n`;
+  }
   return newAnswerLog;
 }
