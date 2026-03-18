@@ -1,9 +1,14 @@
-import { CLASS, TYPE } from '@esutils/dns-packet';
+import { CLASS, TYPE, Packet } from '@esutils/dns-packet';
 
-import { queryDnsParallel } from './dns-util';
+import { type DnsQuery, queryDnsParallel } from './dns-util';
+import { type DnsResponse } from './dns-proxy-utils';
 
 async function demoParallel() {
-  const questions = [
+  const queryPacket = Packet.create();
+  queryPacket.header.id = Packet.randomHeaderId();
+  // https://github.com/song940/node-dns/issues/29
+  queryPacket.header.rd = 1;
+  queryPacket.questions = [
     {
       name: 'baidu.com',
       type: TYPE.A,
@@ -11,7 +16,19 @@ async function demoParallel() {
       errors: [],
     },
   ];
-  const dnsResultA = await queryDnsParallel(
+  const requestBuffer = Packet.encode(queryPacket, []);
+  const query: DnsQuery = {
+    type: TYPE.A,
+    protocolType: 'udp',
+    errors: [],
+    domainName: 'baidu.com',
+    requestBuffer: requestBuffer,
+    requestBufferOriginal: requestBuffer,
+    request: queryPacket,
+    responseBuffer: requestBuffer,
+  };
+  const dnsResultA: DnsResponse[] = [];
+  await queryDnsParallel(
     [
       {
         ip: '1.1.1.1',
@@ -22,12 +39,17 @@ async function demoParallel() {
         port: 53,
       },
     ],
-    questions,
+    query,
+    dnsResultA,
     1000,
   );
-  console.log(JSON.stringify(dnsResultA));
+  dnsResultA[0].responseBuffer = undefined;
+  dnsResultA[1].responseBuffer = undefined;
+  console.log(JSON.stringify(dnsResultA, null, 2));
+
   // 180.76.76.76
-  const dnsResultB = await queryDnsParallel(
+  const dnsResultB: DnsResponse[] = [];
+  await queryDnsParallel(
     [
       {
         ip: '114.114.114.114',
@@ -38,10 +60,13 @@ async function demoParallel() {
         port: 53,
       },
     ],
-    questions,
+    query,
+    dnsResultB,
     1000,
   );
-  console.log(JSON.stringify(dnsResultB));
+  dnsResultB[0].responseBuffer = undefined;
+  dnsResultB[1].responseBuffer = undefined;
+  console.log(JSON.stringify(dnsResultB, null, 2));
 }
 
 demoParallel();

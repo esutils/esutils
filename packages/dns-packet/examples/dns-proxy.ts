@@ -1,28 +1,11 @@
 import * as udp from 'dgram';
 import * as fs from 'fs';
-import * as net from 'net';
 
-import {
-  CLASS,
-  decodeResourceDefault,
-  type DnsPacket,
-  type DnsResource,
-  type DnsResourceA,
-  type DnsResourceAddress,
-  type HeaderInfo,
-  encodeResourceDefault,
-  Packet,
-  TYPE,
-} from '@esutils/dns-packet';
-
-import { delay } from '@esutils/delay';
-import { queryDnsParallel } from './dns-util';
+import { handleDnsRequest } from './dns-util';
 import {
   updateDomains,
   AllDomainList,
   AllDnsServerInfo,
-  getDnsServerInfo,
-  dnsResponseAnswerUpdate,
 } from './dns-proxy-utils';
 
 const DnsPort = parseInt(process.env.DNS_PORT ?? '53', 10);
@@ -107,124 +90,16 @@ async function startDnsServer() {
       serverInfo.logFile = await fs.promises.open(serverInfo.log, 'a');
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  server.on('message', async (message: Buffer, rinfo) => {
-    const request = Packet.decode(message as Uint8Array, decodeResourceDefault);
-    const questions = request.questions.filter(
-      (x) =>
-        x.type === TYPE.A ||
-        x.type === TYPE.AAAA ||
-        x.type === TYPE.CNAME ||
-        x.type === TYPE.DNAME ||
-        x.type === TYPE.HTTPS ||
-        x.type === TYPE.SVCB ||
-        x.type === TYPE.NAPTR ||
-        x.type === TYPE.PTR,
-    );
-    const response: DnsPacket = {
-      header: request.header,
-      errors: [],
-      questions: request.questions,
-      answers: [],
-      authorities: [],
-      additionals: [],
-    };
-    if (questions.length >= 1) {
-      try {
-        const { name, type: questionType } = questions[0];
-        const dnsServer = getDnsServerInfo(name);
-        const queryFinalResult = await queryDnsParallel(
-          dnsServer.server.dnsList,
-          questions,
-          1000,
-        );
-        let dnsResult = queryFinalResult.result;
-        let foundResponse = false;
-        const { servers } = queryFinalResult.state;
-        for (let i = 0; i < 10 && !foundResponse; i += 1) {
-          for (let j = 0; j < servers.length; j += 1) {
-            const serverCurrent = servers[j];
-            const responseCurrent = serverCurrent.result?.packet;
-            if (responseCurrent) {
-              if (
-                responseCurrent.answers.length > 0 ||
-                responseCurrent.authorities.length > 0
-              ) {
-                response.header = JSON.parse(
-                  JSON.stringify(responseCurrent.header),
-                ) as HeaderInfo;
-                response.header.id = request.header.id;
-                response.questions = responseCurrent.questions;
-                response.answers = responseCurrent.answers;
-                response.authorities = responseCurrent.authorities;
-                response.additionals = responseCurrent.additionals;
-                dnsResult = serverCurrent;
-                foundResponse = true;
-                break;
-              }
-            }
-          }
 
-          // delay for 100ms
-          await delay(100);
-        }
-        if (!foundResponse) {
-          let errorMessage = `Fetch dns for ${name} failed with:\n`;
-          let hasError = true;
-          for (let j = 0; j < servers.length; j += 1) {
-            const serverCurrent = servers[j];
-            const { result } = serverCurrent;
-            if (!result) {
-              errorMessage += `Timeout from ${serverCurrent.address.ip}\n`;
-            } else {
-              const responseCurrent = result.packet;
-              if (!responseCurrent) {
-                errorMessage += `Fetch dns from ${serverCurrent.address.ip} with error ${result.type}:${result.error}\n`;
-              } else if (responseCurrent.errors.length > 0) {
-                for (let k = 0; k < responseCurrent.errors.length; k += 1) {
-                  errorMessage += `Parse error from ${serverCurrent.address.ip} with ${responseCurrent.errors[k]}\n`;
-                }
-              } else {
-                /* means response with empty entry */
-                hasError = false;
-              }
-            }
-            if (!serverCurrent.closed) {
-              serverCurrent.closed = true;
-              serverCurrent.client.close();
-            }
-          }
-          if (hasError) {
-            console.log(errorMessage);
-          }
-        }
-        const newAnswerLog = dnsResponseAnswerUpdate(
-          name,
-          questionType,
-          response,
-          dnsServer,
-          dnsResult.address,
-        );
-        if (dnsServer.server.logFile) {
-          dnsServer.server.logFile.write(newAnswerLog);
-        }
-      } catch (error) {
-        console.log(`The dns query error:${error as Error}`);
-        if (error instanceof AggregateError) {
-          for (let i = 0; i < error.errors.length; i += 1) {
-            const childError = error.errors[i] as Error;
-            console.log(`The dns query error[${i}]: ${childError}`);
-          }
-        }
-      }
-    } else {
-      console.log(
-        `The questions count is 0 for ${message.toString('hex')} ${JSON.stringify(request.questions)}`,
-      );
+  server.on('message', (message: Buffer, rinfo) => {
+    function sendResponse(responseBuffer: Uint8Array) {
+      server.send(responseBuffer, rinfo.port, rinfo.address);
     }
-    // console.log(`The naswer is: ${JSON.stringify(response.answers)}`);
-    const responseBuffer = Packet.encode(response, encodeResourceDefault);
-    server.send(responseBuffer, rinfo.port, rinfo.address);
+    handleDnsRequest('udp', message, sendResponse, 1500).catch((error) => {
+      console.log(
+        `handleDnsRequest failed for requestBuffer:${Buffer.from(message).toString('hex')} with error:${error}`,
+      );
+    });
   });
 
   // emits when socket is ready and listening for datagram msgs
@@ -252,7 +127,7 @@ async function startDnsServer() {
         serverInfo.logFile.close();
       }
     }
-    console.log('Socket is closed !');
+    console.log('Socket is closed!');
   });
 
   server.bind(DnsPort);
