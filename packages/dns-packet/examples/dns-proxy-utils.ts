@@ -1,4 +1,15 @@
 import * as fs from 'fs';
+import * as net from 'net';
+
+import {
+  CLASS,
+  type DnsResourceA,
+  type DnsResourceAddress,
+  TYPE,
+  type DnsPacket,
+  type DnsResource,
+} from '@esutils/dns-packet';
+
 import { type DnsQueryServerAddress } from './dns-basic';
 
 export interface DnsServerInfo {
@@ -86,4 +97,51 @@ export function getDnsServerInfo(domain: string): DnsServerInfoFound {
     resolved: true,
     server: AllDnsServerInfo.default,
   };
+}
+
+export function dnsResponseAnswerUpdate(
+  name: string,
+  questionType: number,
+  response: DnsPacket,
+  dnsServer: DnsServerInfoFound,
+  address: DnsQueryServerAddress,
+) {
+  const answersFiltered: DnsResource[] = [];
+  let newAnswerLog = `${name} ${address.ip} addrs:`;
+  for (let i = 0; i < response.answers.length; i += 1) {
+    const answer = response.answers[i];
+    if (answer.type === TYPE.A || answer.type === TYPE.AAAA) {
+      const answerIp = answer as DnsResourceAddress;
+      newAnswerLog = `${newAnswerLog} ${answerIp.address}`;
+      if (dnsServer.resolved === true) {
+        answersFiltered.push(answer);
+      }
+    } else {
+      answersFiltered.push(answer);
+    }
+  }
+  if (typeof dnsServer.resolved === 'string') {
+    // 39.156.66.10;110.242.68.66
+    const ipList = dnsServer.resolved.split(';');
+    for (let pi = 0; pi < ipList.length; pi += 1) {
+      const ip = ipList[pi];
+      if (net.isIP(ip) > 0) {
+        const addr: DnsResourceA = {
+          name,
+          type: net.isIPv6(ip) ? TYPE.AAAA : TYPE.A,
+          class: CLASS.IN,
+          address: ip,
+          ttl: 300,
+          errors: [],
+        };
+        answersFiltered.push(addr);
+      }
+    }
+    newAnswerLog = `${newAnswerLog} override with:${dnsServer.resolved}\n`;
+    response.header.rcode = 0;
+  } else {
+    newAnswerLog = `${newAnswerLog}\n`;
+  }
+  response.answers = answersFiltered;
+  return newAnswerLog;
 }

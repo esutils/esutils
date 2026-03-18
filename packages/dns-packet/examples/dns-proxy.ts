@@ -22,6 +22,7 @@ import {
   AllDomainList,
   AllDnsServerInfo,
   getDnsServerInfo,
+  dnsResponseAnswerUpdate,
 } from './dns-proxy-utils';
 
 const DnsPort = parseInt(process.env.DNS_PORT ?? '53', 10);
@@ -130,7 +131,7 @@ async function startDnsServer() {
     };
     if (questions.length >= 1) {
       try {
-        const { name } = questions[0];
+        const { name, type: questionType } = questions[0];
         const dnsServer = getDnsServerInfo(name);
         const queryFinalResult = await queryDnsParallel(
           dnsServer.server.dnsList,
@@ -197,45 +198,13 @@ async function startDnsServer() {
             console.log(errorMessage);
           }
         }
-
-        const answersFiltered: DnsResource[] = [];
-        let newAnswerLog = `${name} ${dnsResult.address.ip} addrs:`;
-        for (let i = 0; i < response.answers.length; i += 1) {
-          const answer = response.answers[i];
-          if (answer.type === TYPE.A || answer.type === TYPE.AAAA) {
-            const answerIp = answer as DnsResourceAddress;
-            newAnswerLog = `${newAnswerLog} ${answerIp.address}`;
-            if (dnsServer.resolved === true) {
-              answersFiltered.push(answer);
-            }
-          } else {
-            answersFiltered.push(answer);
-          }
-        }
-        if (typeof dnsServer.resolved === 'string') {
-          // 39.156.66.10;110.242.68.66
-          const ipList = dnsServer.resolved.split(';');
-          for (let pi = 0; pi < ipList.length; pi += 1) {
-            const ip = ipList[pi];
-            if (net.isIP(ip) > 0) {
-              const addr: DnsResourceA = {
-                name,
-                type: net.isIPv6(ip) ? TYPE.AAAA : TYPE.A,
-                class: CLASS.IN,
-                address: ip,
-                ttl: 300,
-                errors: [],
-              };
-              answersFiltered.push(addr);
-            }
-          }
-          newAnswerLog = `${newAnswerLog} override with:${dnsServer.resolved}\n`;
-          response.header.rcode = 0;
-        } else {
-          newAnswerLog = `${newAnswerLog}\n`;
-        }
-        response.answers = answersFiltered;
-
+        const newAnswerLog = dnsResponseAnswerUpdate(
+          name,
+          questionType,
+          response,
+          dnsServer,
+          dnsResult.address,
+        );
         if (dnsServer.server.logFile) {
           dnsServer.server.logFile.write(newAnswerLog);
         }
