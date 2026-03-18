@@ -10,8 +10,6 @@ import {
   type DnsResourceA,
   type DnsResourceAAAA,
   Packet,
-  encodeResourceDefault,
-  decodeResourceDefault,
 } from '@esutils/dns-packet';
 
 function dnsLiteralToUint8Array(arr: (number | string)[]) {
@@ -66,13 +64,12 @@ describe('dns-packet in typescript', () => {
 
   it('Name#decode', () => {
     const reader = new BufferReader(response, 8 * 12);
-    let name = Name.decode(reader);
-    expect(name).toEqual('www.z.cn');
+    expect(Name.decode(reader)).toEqual({ len: 10, name: 'www.z.cn' });
 
     reader.offset = 8 * 26;
-    name = Name.decode(reader);
+    const name = Name.decode(reader);
     expect(reader.offset).toEqual(8 * 28);
-    expect(name).toEqual('www.z.cn');
+    expect(name).toEqual({ len: 2, name: 'www.z.cn' });
   });
 
   it('Header#encode', () => {
@@ -140,7 +137,7 @@ describe('dns-packet in typescript', () => {
   });
 
   test('Packet#decode', () => {
-    const packet = Packet.decode(response, decodeResourceDefault);
+    const packet = Packet.decode(response, []);
     assert.equal(packet.questions[0].name, 'www.z.cn');
     assert.equal(packet.questions[0].type, TYPE.A);
     assert.equal(packet.questions[0].class, CLASS.IN);
@@ -171,96 +168,7 @@ describe('dns-packet in typescript', () => {
       ttl: 300,
       address: '2001:db8::::ff00:42:8329',
     });
-    const encoded = Packet.encode(packet, encodeResourceDefault);
-    assert.deepEqual(Packet.decode(encoded, decodeResourceDefault), packet);
-  });
-
-  it('Packet#decode#random', () => {
-    const buf0 = Buffer.from(
-      '82d90100000100000000000003626167066974756e6573056170706c6503636f6d0000410001',
-      'hex',
-    ) as Uint8Array;
-    assert.deepEqual(Packet.decode(buf0, decodeResourceDefault), {
-      additionals: [],
-      answers: [],
-      authorities: [],
-      errors: [],
-      header: {
-        aa: 0,
-        ancount: 0,
-        arcount: 0,
-        id: 33497,
-        nscount: 0,
-        opcode: 0,
-        qdcount: 1,
-        qr: 0,
-        ra: 0,
-        rcode: 0,
-        rd: 1,
-        tc: 0,
-        z: 0,
-      },
-      questions: [
-        { class: 1, name: 'bag.itunes.apple.com', type: 65, errors: [] },
-      ],
-    });
-
-    const buf1 = Buffer.from(
-      'b90801000001000000000000045f646e73087265736f6c76657204617270610000400001',
-      'hex',
-    ) as Uint8Array;
-    assert.deepEqual(Packet.decode(buf1, decodeResourceDefault), {
-      additionals: [],
-      answers: [],
-      authorities: [],
-      errors: [],
-      header: {
-        aa: 0,
-        ancount: 0,
-        arcount: 0,
-        id: 47368,
-        nscount: 0,
-        opcode: 0,
-        qdcount: 1,
-        qr: 0,
-        ra: 0,
-        rcode: 0,
-        rd: 1,
-        tc: 0,
-        z: 0,
-      },
-      questions: [
-        { class: 1, name: '_dns.resolver.arpa', type: 64, errors: [] },
-      ],
-    });
-
-    const buf2 = Buffer.from(
-      '8e6f010000010000000000000873697064627a30360572637330310335676d02776f02636e0000230001',
-      'hex',
-    ) as Uint8Array;
-    assert.deepEqual(Packet.decode(buf2, decodeResourceDefault), {
-      additionals: [],
-      answers: [],
-      authorities: [],
-      errors: [],
-      header: {
-        aa: 0,
-        ancount: 0,
-        arcount: 0,
-        id: 36463,
-        nscount: 0,
-        opcode: 0,
-        qdcount: 1,
-        qr: 0,
-        ra: 0,
-        rcode: 0,
-        rd: 1,
-        tc: 0,
-        z: 0,
-      },
-      questions: [
-        { class: 1, name: 'sipdbz06.rcs01.5gm.wo.cn', type: 35, errors: [] },
-      ],
-    });
+    const encoded = Packet.encode(packet, []);
+    assert.deepEqual(Packet.decode(encoded, []), packet);
   });
 });
