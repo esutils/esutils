@@ -8,6 +8,16 @@ export interface DnsServerInfo {
   dnsList: DnsServerAddress[];
 }
 
+export interface DnsServerInfoFound {
+  resolved: boolean | string;
+  server: DnsServerInfo;
+}
+
+export interface DnsServerDomainList {
+  domains: Record<string, boolean | string>;
+  tag: string;
+}
+
 export function updateDomainsFromLine(
   domains: Record<string, boolean | string>,
   line: string,
@@ -52,4 +62,24 @@ export function checkDomains(
   }
 
   return false;
+}
+
+export const AllDomainList: DnsServerDomainList[] = [];
+export const AllDnsServerInfo: Record<string, DnsServerInfo> = {};
+
+export function getDnsServerInfo(domain: string): DnsServerInfoFound {
+  const domainItems = domain.split('.');
+  for (let i = 0; i < AllDomainList.length; i += 1) {
+    const resolved = checkDomains(AllDomainList[i].domains, domainItems);
+    if (resolved) {
+      return {
+        resolved,
+        server: AllDnsServerInfo[AllDomainList[i].tag],
+      };
+    }
+  }
+  return {
+    resolved: true,
+    server: AllDnsServerInfo.default,
+  };
 }
