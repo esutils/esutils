@@ -91,6 +91,7 @@ export interface DnsBasic {
   name: string;
   type: number;
   class: number;
+  errors: string[];
 }
 
 export interface DnsQuestion extends DnsBasic {}
@@ -269,6 +270,7 @@ export class Question {
       name: name ?? '',
       type: type ?? TYPE.ANY,
       class: cls ?? CLASS.ANY,
+      errors: [],
     };
   }
 
@@ -621,6 +623,7 @@ export function createDnsBasic(): DnsBasic {
     name: '',
     type: TYPE.ANY,
     class: CLASS.ANY,
+    errors: [],
   };
 }
 

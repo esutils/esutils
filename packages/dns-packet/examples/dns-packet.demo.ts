@@ -8,6 +8,7 @@ async function demoParallel() {
       name: 'baidu.com',
       type: TYPE.A,
       class: CLASS.IN,
+      errors: [],
     },
   ];
   const dnsResultA = await queryMultipleDNS(

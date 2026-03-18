@@ -253,6 +253,7 @@ async function startDnsServer() {
                 class: CLASS.IN,
                 address: ip,
                 ttl: 300,
+                errors: [],
               };
               answersFiltered.push(addr);
             }
