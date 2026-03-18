@@ -25,7 +25,7 @@ export interface DnsServerAddress {
   port: number;
 }
 
-export interface DnsServerInfo {
+export interface DnsResponse {
   address: DnsServerAddress;
   client: udp.Socket;
   closed: boolean;
@@ -34,17 +34,17 @@ export interface DnsServerInfo {
 }
 
 export interface QueryDnsState {
-  promises: Promise<DnsServerInfo>[];
+  promises: Promise<DnsResponse>[];
   noAnswerCount: number;
-  servers: DnsServerInfo[];
+  servers: DnsResponse[];
 }
 export interface QueryDnsFinalResult {
-  result: DnsServerInfo;
+  result: DnsResponse;
   state: QueryDnsState;
 }
 
 export async function queryDNS(
-  server: DnsServerInfo,
+  server: DnsResponse,
   questions: DnsQuestion[],
   timeout: number,
 ) {
@@ -53,7 +53,7 @@ export async function queryDNS(
   // https://github.com/song940/node-dns/issues/29
   query.header.rd = 1;
   query.questions = questions;
-  return new Promise<DnsServerInfo>((resolve) => {
+  return new Promise<DnsResponse>((resolve) => {
     let timerCleared = false;
     function resolveWith(result: QueryDnsResult) {
       if (server.result === undefined) {
@@ -124,7 +124,7 @@ export async function queryMultipleDNS(
     servers: [],
   };
   for (let i = 0; i < serverAddresses.length; i += 1) {
-    const serverInfo: DnsServerInfo = {
+    const serverInfo: DnsResponse = {
       address: serverAddresses[i],
       client: udp.createSocket('udp4'),
       closed: false,
