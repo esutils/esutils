@@ -19,8 +19,9 @@ import { delay } from '@esutils/delay';
 import { queryMultipleDNS } from './dns-util';
 import {
   updateDomains,
-  checkDomains,
-  type DnsServerInfo,
+  AllDomainList,
+  AllDnsServerInfo,
+  getDnsServerInfo,
 } from './dns-proxy-utils';
 
 const DnsPort = parseInt(process.env.DNS_PORT ?? '53', 10);
@@ -43,14 +44,6 @@ const HelpInfo = `
     <tag> one of 'main' 'auxiliary' 'default'
     <ip> The ip of main dns server
 `;
-
-interface DomainList {
-  domains: Record<string, boolean | string>;
-  tag: string;
-}
-
-const AllDomainList: DomainList[] = [];
-const AllDnsServerInfo: Record<string, DnsServerInfo> = {};
 
 function parseArgs(argv: string[]) {
   let hasHelp = false;
@@ -96,28 +89,6 @@ function parseArgs(argv: string[]) {
 }
 
 parseArgs(process.argv);
-
-interface DnsServerInfoFound {
-  resolved: boolean | string;
-  server: DnsServerInfo;
-}
-
-function getDnsServerInfo(domain: string): DnsServerInfoFound {
-  const domainItems = domain.split('.');
-  for (let i = 0; i < AllDomainList.length; i += 1) {
-    const resolved = checkDomains(AllDomainList[i].domains, domainItems);
-    if (resolved) {
-      return {
-        resolved,
-        server: AllDnsServerInfo[AllDomainList[i].tag],
-      };
-    }
-  }
-  return {
-    resolved: true,
-    server: AllDnsServerInfo.default,
-  };
-}
 
 async function startDnsServer() {
   const server = udp.createSocket('udp4');
