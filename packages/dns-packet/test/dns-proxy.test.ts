@@ -16,6 +16,7 @@ release-assets.githubusercontent.com 185.199.110.133
 github.com 140.82.121.3
 codeload.github.com 140.82.113.10
 www.github.com 140.82.121.3
+ # www.bing.com 10.10.10.10
 `.split(/\r\n|\n\r|\n|\r/);
 test('Packet#decode', () => {
   const x = {};
@@ -36,4 +37,5 @@ test('Packet#decode', () => {
     checkDomains(x, 'some_thing_else.github.com'.split('.')),
     true,
   );
+  assert.strictEqual(checkDomains(x, 'www.bing.com'.split('.')), false);
 });

@@ -22,6 +22,10 @@ export function updateDomainsFromLine(
   domains: Record<string, boolean | string>,
   line: string,
 ) {
+  const lineTrimmed = line.trim();
+  if (lineTrimmed.startsWith('#')) {
+    return;
+  }
   const domainMap = line.trim().split(' ');
   if (domainMap.length === 1) {
     domains[domainMap[0]] = true;
