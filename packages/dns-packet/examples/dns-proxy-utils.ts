@@ -9,7 +9,7 @@ import {
   TYPE_INVERTED,
 } from '@esutils/dns-packet';
 
-import { type DnsQueryServerAddress } from './dns-basic';
+import { type DnsQueryServerAddress } from './dns-query';
 
 export interface DnsServerInfo {
   tag: string;

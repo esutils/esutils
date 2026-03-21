@@ -1,6 +1,17 @@
 import assert from 'assert';
 import { Packet } from '@esutils/dns-packet';
 
+export function checkResourcePacketDecodeInvalid(
+  hexBuf: string,
+  expectedErrors: string[],
+) {
+  const buf = Buffer.from(hexBuf, 'hex');
+  const errors = [] as string[];
+  const textDecoder = new TextDecoder();
+  Packet.decode(buf, textDecoder, errors);
+  assert.deepStrictEqual(errors, expectedErrors);
+}
+
 export function checkResourcePacketEncodeDecode(
   enableCheckCompressNameHex: boolean,
   hexBuf: string,
@@ -8,12 +19,14 @@ export function checkResourcePacketEncodeDecode(
 ) {
   const buf = Buffer.from(hexBuf, 'hex');
   const errors = [] as string[];
-  const decoded = Packet.decode(buf, errors);
-  assert.deepEqual(decoded, expected);
+  const textDecoder = new TextDecoder();
+  const textEncoder = new TextEncoder();
+  const decoded = Packet.decode(buf, textDecoder, errors);
+  assert.deepStrictEqual(decoded, expected);
   assert.deepEqual(errors, []);
-  const encoded = Packet.encode(decoded, errors);
+  const encoded = Packet.encode(decoded, textEncoder, errors);
   assert.deepEqual(errors, []);
-  const decodedAgain = Packet.decode(encoded, errors);
+  const decodedAgain = Packet.decode(encoded, textDecoder, errors);
   assert.deepEqual(errors, []);
 
   assert.deepEqual(decodedAgain, expected);

@@ -8,16 +8,16 @@ import { delay } from '@esutils/delay';
 
 import {
   queryDnsBuffer,
-  type AbortFunction,
   type DnsQueryProtocolType,
   type DnsQueryServerAddress,
-} from './dns-basic';
+} from './dns-query';
 import {
   type DnsResponse,
   dnsResponseAnswerUpdate,
   dnsResponsesSort,
   getDnsServerInfo,
 } from './dns-proxy-utils';
+import { type AbortFunction } from './abortable-promise';
 
 export interface DnsQuery {
   type: number;
@@ -42,6 +42,7 @@ export async function queryDns(
   queryPos: number,
   query: DnsQuery,
 ) {
+  const textDecoder = new TextDecoder();
   const dnsResponse = dnsResponses[queryPos];
   const result = queryDnsBuffer(
     query.requestBuffer,
@@ -52,7 +53,7 @@ export async function queryDns(
   const responseBufferOrError = await result.promise;
   if (responseBufferOrError instanceof Uint8Array) {
     dnsResponse.responseBuffer = responseBufferOrError;
-    const packet = Packet.decode(responseBufferOrError, dnsResponse.errors);
+    const packet = Packet.decode(responseBufferOrError, textDecoder, dnsResponse.errors);
     if (dnsResponse.errors.length === 0) {
       dnsResponse.response = packet;
     }
@@ -118,8 +119,11 @@ export async function dnsFetchResponseBuffer(
   dnsResponses: DnsResponse[],
   timeout: number,
 ) {
+  const textEncoder = new TextEncoder();
+  const textDecoder = new TextDecoder();
   const requestPacketOriginal = Packet.decode(
     query.requestBufferOriginal,
+    textDecoder,
     query.errors,
   );
   if (query.errors.length === 0) {
@@ -134,7 +138,7 @@ export async function dnsFetchResponseBuffer(
       query.domainName = questions[0].name;
       query.type = questions[0].type;
     }
-    query.requestBuffer = Packet.encode(query.request, query.errors);
+    query.requestBuffer = Packet.encode(query.request, textEncoder, query.errors);
   }
 
   if (query.errors.length > 0 || query.domainName.length == 0) {
@@ -184,6 +188,7 @@ export async function dnsFetchResponseBuffer(
   }
   const responseBufferEncoded = Packet.encode(
     response,
+    textEncoder,
     dnsClientChoosed.errors,
   );
   if (dnsClientChoosed.errors.length > 0) {

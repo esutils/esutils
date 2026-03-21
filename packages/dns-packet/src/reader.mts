@@ -17,9 +17,9 @@ export class BufferReader {
 
   public offset: number;
 
-  constructor(buffer: Uint8Array, offset?: number) {
+  constructor(buffer: Uint8Array) {
     this.buffer = buffer;
-    this.offset = offset || 0;
+    this.offset = 0;
   }
 
   /**

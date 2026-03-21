@@ -1,5 +1,9 @@
 import * as udp from 'dgram';
 import * as net from 'net';
+import * as tls from 'tls';
+
+import { readStream } from './dns-net';
+import { type AbortablePromise } from './abortable-promise';
 
 export interface DnsQueryServerAddress {
   ip: string;
@@ -14,19 +18,12 @@ export type DnsQueryProtocolType =
   | 'https'
   | 'h2';
 
-export type AbortFunction = () => void;
-
-export interface DnsResponseBufferPromise {
-  promise: Promise<Uint8Array | Error>;
-  abort?: AbortFunction;
-}
-
 export function queryDnsBuffer(
   requestBuffer: Uint8Array,
   protocolType: DnsQueryProtocolType,
   serverAddress: DnsQueryServerAddress,
-): DnsResponseBufferPromise {
-  const response: DnsResponseBufferPromise = {
+): AbortablePromise<Uint8Array> {
+  const response: AbortablePromise<Uint8Array> = {
     promise: Promise.resolve(new Error('Not supported')),
   };
   switch (protocolType) {
@@ -76,6 +73,24 @@ export function queryDnsBuffer(
       break;
     case 'tcp':
     case 'tls':
+      response.promise = new Promise<Uint8Array | Error>((resolve) => {
+        const client: net.Socket =
+          protocolType === 'tcp'
+            ? net.connect({
+                port: serverAddress.port,
+                host: serverAddress.ip,
+              })
+            : tls.connect({
+                port: serverAddress.port,
+                host: serverAddress.ip,
+                servername: serverAddress.ip,
+              });
+        const lenBuffer = Buffer.alloc(2);
+        lenBuffer.writeUInt16BE(requestBuffer.length);
+        client.write(Buffer.concat([lenBuffer, requestBuffer]));
+        readStream(response, client).then(resolve);
+      });
+      break;
     case 'http':
     case 'https':
     case 'h2':
