@@ -1,11 +1,23 @@
-import { queryDnsBuffer } from './dns-basic';
+import { type DnsQueryProtocolType, queryDnsBuffer } from './dns-query';
 
 async function fetchDns(requestHex: string) {
+  const requestHexParts = requestHex.split('#');
+  let serverIp = '127.0.0.1';
+  let serverPort = 55;
+  let protocolType: DnsQueryProtocolType = 'udp';
+  if (requestHexParts.length >= 2) {
+    requestHex = requestHexParts[0];
+    serverIp = requestHexParts[1];
+    serverPort = 53;
+    if (requestHexParts.length === 3) {
+      protocolType = requestHexParts[2] as DnsQueryProtocolType;
+    }
+  }
   const requestBuffer = Buffer.from(requestHex, 'hex') as Uint8Array;
   try {
-    const result = queryDnsBuffer(requestBuffer, 'udp', {
-      ip: '127.0.0.1',
-      port: 55,
+    const result = queryDnsBuffer(requestBuffer, protocolType, {
+      ip: serverIp,
+      port: serverPort,
     });
     setTimeout(() => {
       if (result.abort) {
@@ -24,12 +36,23 @@ async function fetchDns(requestHex: string) {
 }
 
 async function main() {
-  const requestList = [
+  const requestListExternal = [
+    // nslookup -type=any bing.com 180.76.76.76
+    '0001010000010000000000000237360237360237360331383007696e2d61646472046172706100000c0001#180.76.76.76',
+    '0002010000010000000000000462696e6703636f6d0000ff0001#180.76.76.76',
+
+    // nslookup -type=any bing.com 9.9.9.9
+    '0002010000010000000000000462696e6703636f6d0000ff0001#9.9.9.9#tcp',
+
+    // nslookup -port=53 -type=any google.com 8.8.8.8
+    '000101000001000000000000013801380138013807696e2d61646472046172706100000c0001#8.8.8.8',
+    '00020100000100000000000006676f6f676c6503636f6d0000ff0001#8.8.8.8#tcp',
+  ];
+
+  const requestListSelf = [
     // Request dns for type: A domain:'api.smoot.apple.cn' Not supported DNS TYPE DNAME:39
     '1dc5010000010000000000000361706905736d6f6f74056170706c6502636e0000010001',
-    // nslookup -port=53 -type=any google.com 8.8.8.8
-    '000101000001000000000000013801380138013807696e2d61646472046172706100000c0001',
-    '00020100000100000000000006676f6f676c6503636f6d0000ff0001',
+
     // dig bing.com TXT
     'e07b012000010000000000010462696e6703636f6d000010000100002904d000000000000c000a00084d4fe6ac32a34e1c',
     // dig hinfo.network SOA
@@ -69,7 +92,11 @@ async function main() {
     // dap.pat-issuer.cloudflare.com TYPE HTTPS:65
     '00c801000001000000000000036461700a7061742d6973737565720a636c6f7564666c61726503636f6d0000410001',
   ];
-  for (const requestHex of requestList) {
+  for (const requestHex of requestListExternal) {
+    await fetchDns(requestHex);
+  }
+  process.exit(0);
+  for (const requestHex of requestListSelf) {
     await fetchDns(requestHex);
   }
 }

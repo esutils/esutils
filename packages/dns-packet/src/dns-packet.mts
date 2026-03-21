@@ -111,6 +111,22 @@ export interface DnsBasic {
   errors: string[];
 }
 
+export interface DnsBasicState {
+  errors: string[];
+  // Map from domain name offset to the domain name parts array, used for name decompression and compression
+  domainNameMap: Map<number, string[]>;
+}
+
+export interface DnsDecodeState extends DnsBasicState {
+  reader: BufferReader;
+  textDecoder: TextDecoder;
+}
+
+export interface DnsEncodeState extends DnsBasicState {
+  writer: BufferWriter;
+  textEncoder: TextEncoder;
+}
+
 export interface DnsQuestion extends DnsBasic {}
 
 export interface DnsResource extends DnsBasic {
@@ -178,15 +194,15 @@ export interface DnsResourceSVCB extends DnsResource {
 export interface DnsResourceNAPTR extends DnsResource {
   order: number;
   preference: number;
-  flags: Uint8Array;
-  services: Uint8Array;
-  regexp: Uint8Array;
+  flags: string;
+  services: string;
+  regexp: string;
   replacement: string;
 }
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14
 export interface DnsResourceSPF extends DnsResource {
-  characterStrings: Uint8Array[];
+  characterStrings: string[];
 }
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.13
@@ -200,6 +216,11 @@ export interface DnsResourceSOA extends DnsResource {
   minimum: number;
 }
 
+export interface DnsResourceHINFO extends DnsResource {
+  cpu: string;
+  os: string;
+}
+
 // https://datatracker.ietf.org/doc/html/rfc2782
 export interface DnsResourceSRV extends DnsResource {
   priority: number;
@@ -210,6 +231,7 @@ export interface DnsResourceSRV extends DnsResource {
 
 /**
  * [Header description]
+ * @type {Object}
  * @param {[type]} options [description]
  * @docs https://tools.ietf.org/html/rfc1035#section-4.1.1
  */
@@ -238,7 +260,8 @@ export class Header {
    * @return {[type]}        [description]
    * @docs https://tools.ietf.org/html/rfc1035#section-4.1.1
    */
-  static decode(reader: BufferReader) {
+  static decode(state: DnsDecodeState) {
+    const { reader } = state;
     const header = Header.create();
     header.id = reader.read(16);
     header.qr = reader.read(1);
@@ -260,7 +283,8 @@ export class Header {
    * [toBuffer description]
    * @return {[type]} [description]
    */
-  static encode(writer: BufferWriter, header: HeaderInfo) {
+  static encode(state: DnsEncodeState, header: HeaderInfo) {
+    const { writer } = state;
     writer.write(header.id, 16);
     writer.write(header.qr, 1);
     writer.write(header.opcode, 4);
@@ -287,25 +311,32 @@ export class Name {
   public static LENGTH_BITS: number = 6;
   public static LENGTH_MASK: number = (1 << Name.LENGTH_BITS) - 1;
 
-  // TODO: decode can supply a length limit, as the RDATA already have a
-  // length limit
-  static decode(reader: BufferReader) {
+  /**
+   * @param reader
+   * @param length When length provided, means the name decoded is the latest domain name of the resource record, so that
+   *  it's length is limited by the resource record length, and the reader should not read beyond the resource record body.
+   * @returns
+   */
+  static decode(state: DnsDecodeState, info: DnsBasic) {
+    const { reader } = state;
     const name = [];
-    let o;
+    let o: number | undefined;
     const offset = reader.offset;
     let len = reader.read(8);
+    let readed = 0;
     while (len) {
-      const compress_sign = len >> Name.LENGTH_BITS;
-      switch (compress_sign) {
+      const compressionSign = len >> Name.LENGTH_BITS;
+      switch (compressionSign) {
         case 0x3: {
           const next_byte = reader.read(8);
           const pos = ((len & Name.LENGTH_MASK) << 8) | next_byte;
-          // TODO: ensure the pos is decoded before
-          if (pos * 8 >= reader.offset - 16) {
-            // Pointer to the current pos or latter pos, that's invalid, skip out
+          const offsetDelta = pos * 8 - reader.offset;
+          if (offsetDelta >= -16) {
+            // Pointer to the current position or other invalid position, skip out
+            info.errors.push(`Decode domain name with invalid offsetDelta: ${offsetDelta} at offset: ${offset} bytes`);
             len = 0;
           } else {
-            if (!o) o = reader.offset;
+            if (o === undefined) o = reader.offset;
             reader.offset = pos * 8;
             len = reader.read(8);
           }
@@ -324,14 +355,19 @@ export class Name {
         default:
           // (The 10 and 01 combinations are reserved for future use.)
           len = 0;
+          info.errors.push(`Decode domain name comes with compressionSign: ${compressionSign} at offset: ${offset} bytes`);
           break;
       }
     }
-    if (o) reader.offset = o;
-    return { name: name.join('.'), len: (reader.offset - offset) >> 3 };
+    if (o !== undefined) {
+      reader.offset = o;
+    }
+    readed = (reader.offset - offset) >> 3;
+    return { name: name.join('.'), readed: readed };
   }
 
-  static encode(domain: string, writer: BufferWriter) {
+  static encode(state: DnsEncodeState, domain: string) {
+    const { writer } = state;
     // TODO: domain name compress
     (domain || '')
       .split('.')
@@ -348,16 +384,19 @@ export class Name {
 }
 
 export class CharacterString {
-  static decode(reader: BufferReader) {
+  static decode(state: DnsDecodeState) {
+    const { reader } = state;
     const len = reader.read(8);
     const cs = new Uint8Array(len);
     for (let i = 0; i < len; i += 1) {
       cs[i] = reader.read(8);
     }
-    return cs;
+    return { cs: state.textDecoder.decode(cs), readed: len + 1 };
   }
 
-  static encode(cs: Uint8Array, writer: BufferWriter, info: DnsBasic) {
+  static encode(state: DnsEncodeState, s: string, info: DnsBasic) {
+    const { writer } = state;
+    const cs = state.textEncoder.encode(s);
     if (cs.length <= 255) {
       writer.write(cs.length, 8);
       for (let i = 0; i < cs.length; i += 1) {
@@ -376,7 +415,7 @@ export class CharacterString {
  * @docs https://tools.ietf.org/html/rfc1035#section-4.1.2
  */
 export class Question {
-  static create(name: string, type?: number, cls?: number): DnsQuestion {
+  static create(name?: string, type?: number, cls?: number): DnsQuestion {
     return {
       name: name ?? '',
       type: type ?? TYPE.ANY,
@@ -390,15 +429,17 @@ export class Question {
    * @param  {[type]} reader [description]
    * @return {[type]}        [description]
    */
-  static decode(this: void, reader: BufferReader, question: DnsQuestion) {
-    const { name } = Name.decode(reader);
+  static decode(this: void, state: DnsDecodeState, question: DnsQuestion) {
+    const { reader } = state;
+    const { name } = Name.decode(state, question);
     question.name = name;
     question.type = reader.read(16);
     question.class = reader.read(16);
   }
 
-  static encode(this: void, writer: BufferWriter, question: DnsQuestion) {
-    Name.encode(question.name, writer);
+  static encode(this: void, state: DnsEncodeState, question: DnsQuestion) {
+    const { writer } = state;
+    Name.encode(state, question.name);
     writer.write(question.type, 16);
     writer.write(question.class, 16);
   }
@@ -409,7 +450,8 @@ export class Question {
  * @docs https://tools.ietf.org/html/rfc1035#section-4.1.3
  */
 export class Resource {
-  static encodeLengthReserve(writer: BufferWriter, bitLength: number = 16) {
+  static encodeLengthReserve(state: DnsEncodeState, bitLength: number = 16) {
+    const { writer } = state;
     // Reserve bitLength bits for resource length
     const offset = writer.buffer.length;
     writer.write(0, bitLength);
@@ -417,10 +459,11 @@ export class Resource {
   }
 
   static encodeLength(
-    writer: BufferWriter,
+    state: DnsEncodeState,
     offset: number,
     bitLength: number = 16,
   ) {
+    const { writer } = state;
     const lengthInBits = writer.buffer.length - offset - bitLength;
     writer.update(offset, lengthInBits >> 3, bitLength);
   }
@@ -431,13 +474,14 @@ export class Resource {
    * @param  info   [description]
    * @return The offset of the reserved 16 bits for resource body length
    */
-  static encode(writer: BufferWriter, info: DnsResource) {
-    Name.encode(info.name, writer);
+  static encode(state: DnsEncodeState, info: DnsResource) {
+    const { writer } = state;
+    Name.encode(state, info.name);
     writer.write(info.type, 16);
     writer.write(info.class, 16);
     writer.write(info.ttl, 32);
     // Reserve 16 bits for resource length
-    return Resource.encodeLengthReserve(writer, 16);
+    return Resource.encodeLengthReserve(state, 16);
   }
 
   /**
@@ -445,8 +489,9 @@ export class Resource {
    * @param  {[type]} reader [description]
    * @return The length of the resource body
    */
-  static decode(reader: BufferReader, info: DnsResource) {
-    const { name } = Name.decode(reader);
+  static decode(state: DnsDecodeState, info: DnsResource) {
+    const { reader } = state;
+    const { name } = Name.decode(state, info);
     info.name = name;
     info.type = reader.read(16);
     info.class = reader.read(16);
@@ -461,14 +506,16 @@ export class Resource {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.4.1
  */
 export class ResourceA {
-  static encode(writer: BufferWriter, info: DnsResourceA) {
+  static encode(state: DnsEncodeState, info: DnsResourceA) {
+    const { writer } = state;
     const parts = info.address.split('.');
     for (const part of parts) {
       writer.write(parseInt(part, 10), 8);
     }
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceA) {
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceA) {
+    const { reader } = state;
     const parts = [];
     while (length > 0) {
       length -= 1;
@@ -484,14 +531,16 @@ export class ResourceA {
  * @docs https://en.wikipedia.org/wiki/IPv6
  */
 export class ResourceAAAA {
-  static encode(writer: BufferWriter, info: DnsResourceAAAA) {
+  static encode(state: DnsEncodeState, info: DnsResourceAAAA) {
+    const { writer } = state;
     const parts = info.address.split(':');
     for (const part of parts) {
       writer.write(parseInt(part, 16), 16);
     }
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceAAAA) {
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceAAAA) {
+    const { reader } = state;
     const parts = [];
     while (length) {
       length -= 2;
@@ -509,13 +558,13 @@ export class ResourceAAAA {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.1
  */
 export class ResourceCNAME {
-  static encode(writer: BufferWriter, info: DnsResourceCNAME) {
-    Name.encode(info.domain, writer);
+  static encode(state: DnsEncodeState, info: DnsResourceCNAME) {
+    Name.encode(state, info.domain);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceCNAME) {
-    const { name, len: lenName } = Name.decode(reader);
-    length -= lenName;
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceCNAME) {
+    const { name, readed: readedName } = Name.decode(state, info);
+    length -= readedName;
     if (length !== 0) {
       info.errors.push(
         `ResourceCNAME decode ${JSON.stringify(info)} failed ${length}`,
@@ -531,17 +580,17 @@ export class ResourceCNAME {
  * @docs https://datatracker.ietf.org/doc/html/rfc6672#section-2
  */
 export class ResourceDNAME {
-  static encode(writer: BufferWriter, info: DnsResourceDNAME) {
+  static encode(state: DnsEncodeState, info: DnsResourceDNAME) {
     // TODO: DNAME can not be compressed
-    Name.encode(info.target, writer);
+    Name.encode(state, info.target);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceDNAME) {
-    const { name, len: lenName } = Name.decode(reader);
-    length -= lenName;
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceDNAME) {
+    const { name, readed: readedName } = Name.decode(state, info);
+    length -= readedName;
     if (length !== 0) {
       info.errors.push(
-        `ResourceCNAME decode ${JSON.stringify(info)} failed ${length}`,
+        `ResourceDNAME decode ${JSON.stringify(info)} failed ${length}`,
       );
     }
     info.target = name;
@@ -555,19 +604,21 @@ export class ResourceDNAME {
  * @docs https://datatracker.ietf.org/doc/html/rfc9460#name-the-svcb-record-type
  */
 export class ResourceSVCB {
-  static encode(writer: BufferWriter, info: DnsResourceSVCB) {
+  static encode(state: DnsEncodeState, info: DnsResourceSVCB) {
+    const { writer } = state;
     writer.write(info.svcPriority, 16);
-    Name.encode(info.targetName, writer);
+    Name.encode(state, info.targetName);
     for (let i = 0; i < info.svcParams.length; i += 1) {
       writer.write(info.svcParams[i], 8);
     }
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceSVCB) {
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceSVCB) {
+    const { reader } = state;
     info.svcPriority = reader.read(16);
     length -= 2;
-    const { name: targetName, len: lenTarget } = Name.decode(reader);
-    length -= lenTarget;
+    const { name: targetName, readed: readedTarget } = Name.decode(state, info);
+    length -= readedTarget;
     info.targetName = targetName;
     info.svcParams = new Uint8Array(length);
     for (let i = 0; i < info.svcParams.length; i += 1) {
@@ -582,29 +633,35 @@ export class ResourceSVCB {
  * @docs https://datatracker.ietf.org/doc/html/rfc3403#section-4.1
  */
 export class ResourceNAPTR {
-  static encode(writer: BufferWriter, info: DnsResourceNAPTR) {
+  static encode(state: DnsEncodeState, info: DnsResourceNAPTR) {
+    const { writer } = state;
     writer.write(info.order, 16);
     writer.write(info.preference, 16);
-    CharacterString.encode(info.flags, writer, info);
-    CharacterString.encode(info.services, writer, info);
-    CharacterString.encode(info.regexp, writer, info);
-    Name.encode(info.replacement, writer);
+    CharacterString.encode(state, info.flags, info);
+    CharacterString.encode(state, info.services, info);
+    CharacterString.encode(state, info.regexp, info);
+    Name.encode(state, info.replacement);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceNAPTR) {
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceNAPTR) {
+    const { reader } = state;
     info.order = reader.read(16);
     length -= 2;
     info.preference = reader.read(16);
     length -= 2;
-    info.flags = CharacterString.decode(reader);
-    length -= info.flags.length + 1;
-    info.services = CharacterString.decode(reader);
-    length -= info.services.length + 1;
-    info.regexp = CharacterString.decode(reader);
-    length -= info.regexp.length + 1;
-    const { name: replacement, len: lenReplacement } = Name.decode(reader);
+    const { cs: flags, readed: readedFlags } = CharacterString.decode(state);
+    info.flags = flags;
+    length -= readedFlags;
+    const { cs: services, readed: readedServices } =
+      CharacterString.decode(state);
+    info.services = services;
+    length -= readedServices;
+    const { cs: regexp, readed: readedRegexp } = CharacterString.decode(state);
+    info.regexp = regexp;
+    length -= readedRegexp;
+    const { name: replacement, readed: readedReplacement } = Name.decode(state, info);
     info.replacement = replacement;
-    length -= lenReplacement;
+    length -= readedReplacement;
     if (length != 0) {
       info.errors.push(`ResourceNAPTR decode ${JSON.stringify(info)} failed`);
     }
@@ -618,17 +675,19 @@ export class ResourceNAPTR {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.9
  */
 export class ResourceMX {
-  static encode(writer: BufferWriter, info: DnsResourceMX) {
+  static encode(state: DnsEncodeState, info: DnsResourceMX) {
+    const { writer } = state;
     writer.write(info.priority, 16);
-    Name.encode(info.exchange, writer);
+    Name.encode(state, info.exchange);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceMX) {
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceMX) {
+    const { reader } = state;
     info.priority = reader.read(16);
     length -= 2;
-    const { name: exchange, len: lenExchange } = Name.decode(reader);
+    const { name: exchange, readed: readedExchange } = Name.decode(state, info);
     info.exchange = exchange;
-    length -= lenExchange;
+    length -= readedExchange;
     if (length != 0) {
       info.errors.push(`ResourceMX decode ${JSON.stringify(info)} failed`);
     }
@@ -641,14 +700,14 @@ export class ResourceMX {
  * @docs https://tools.ietf.org/html/rfc1035#section-3.3.11
  */
 export class ResourceNS {
-  static encode(writer: BufferWriter, info: DnsResourceNS) {
-    Name.encode(info.ns, writer);
+  static encode(state: DnsEncodeState, info: DnsResourceNS) {
+    Name.encode(state, info.ns);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceNS) {
-    const { name, len } = Name.decode(reader);
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceNS) {
+    const { name, readed } = Name.decode(state, info);
     info.ns = name;
-    length -= len;
+    length -= readed;
     if (length != 0) {
       info.errors.push(`ResourceNS decode ${JSON.stringify(info)} failed`);
     }
@@ -661,21 +720,21 @@ export class ResourceNS {
  * @docs https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.14
  */
 export class ResourceSPF {
-  static encode(writer: BufferWriter, info: DnsResourceSPF) {
+  static encode(state: DnsEncodeState, info: DnsResourceSPF) {
     // write each string to output
     for (const characterString of info.characterStrings) {
-      CharacterString.encode(characterString, writer, info);
+      CharacterString.encode(state, characterString, info);
     }
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceSPF) {
-    const characterStrings = [] as Uint8Array[];
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceSPF) {
+    const characterStrings = [] as string[];
     let bytesRead = 0;
 
     while (bytesRead < length) {
-      const characterString = CharacterString.decode(reader);
+      const { cs: characterString, readed } = CharacterString.decode(state);
       characterStrings.push(characterString);
-      bytesRead += characterString.length + 1;
+      bytesRead += readed;
     }
     length -= bytesRead;
     if (length != 0) {
@@ -691,9 +750,10 @@ export class ResourceSPF {
  * @docs https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.13
  */
 export class ResourceSOA {
-  static encode(writer: BufferWriter, info: DnsResourceSOA) {
-    Name.encode(info.primary, writer);
-    Name.encode(info.admin, writer);
+  static encode(state: DnsEncodeState, info: DnsResourceSOA) {
+    Name.encode(state, info.primary);
+    Name.encode(state, info.admin);
+    const { writer } = state;
     writer.write(info.serial, 32);
     writer.write(info.refresh, 32);
     writer.write(info.retry, 32);
@@ -701,13 +761,14 @@ export class ResourceSOA {
     writer.write(info.minimum, 32);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceSOA) {
-    const { name: primary, len: lenPrimary } = Name.decode(reader);
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceSOA) {
+    const { name: primary, readed: readedPrimary } = Name.decode(state, info);
     info.primary = primary;
-    length -= lenPrimary;
-    const { name: admin, len: lenAdmin } = Name.decode(reader);
+    length -= readedPrimary;
+    const { name: admin, readed: readedAdmin } = Name.decode(state, info);
     info.admin = admin;
-    length -= lenAdmin;
+    length -= readedAdmin;
+    const { reader } = state;
     info.serial = reader.read(32);
     info.refresh = reader.read(32);
     info.retry = reader.read(32);
@@ -721,26 +782,53 @@ export class ResourceSOA {
 }
 
 /**
+ * [HINFO description]
+ * @type {Object}
+ * @docs https://datatracker.ietf.org/doc/html/rfc1035#section-3.3.2
+ */
+export class ResourceHINFO {
+  static encode(state: DnsEncodeState, info: DnsResourceHINFO) {
+    CharacterString.encode(state, info.cpu, info);
+    CharacterString.encode(state, info.os, info);
+  }
+
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceHINFO) {
+    const { cs: cpu, readed: readedCpu } = CharacterString.decode(state);
+    info.cpu = cpu;
+    length -= readedCpu;
+    const { cs: os, readed: readedOs } = CharacterString.decode(state);
+    info.os = os;
+    length -= readedOs;
+
+    if (length != 0) {
+      info.errors.push(`ResourceHINFO decode ${JSON.stringify(info)} failed`);
+    }
+  }
+}
+
+/**
  * [SRV description]
  * @type {Object}
  * @docs https://datatracker.ietf.org/doc/html/rfc2782
  */
 export class ResourceSRV {
-  static encode(writer: BufferWriter, info: DnsResourceSRV) {
+  static encode(state: DnsEncodeState, info: DnsResourceSRV) {
+    const { writer } = state;
     writer.write(info.priority, 16);
     writer.write(info.weight, 16);
     writer.write(info.port, 16);
-    Name.encode(info.target, writer);
+    Name.encode(state, info.target);
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceSRV) {
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceSRV) {
+    const { reader } = state;
     info.priority = reader.read(16);
     info.weight = reader.read(16);
     info.port = reader.read(16);
     length -= 6;
-    const { name: target, len: lenTarget } = Name.decode(reader);
+    const { name: target, readed: readedTarget } = Name.decode(state, info);
     info.target = target;
-    length -= lenTarget;
+    length -= readedTarget;
     if (length != 0) {
       info.errors.push(`ResourceSRV decode ${JSON.stringify(info)} failed`);
     }
@@ -760,7 +848,8 @@ export class ECS {
     };
   }
 
-  static decode(reader: BufferReader, length: number): DnsResourceECS {
+  static decode(state: DnsDecodeState, length: number): DnsResourceECS {
+    const { reader } = state;
     const rdata: DnsResourceECS = {
       optionCode: EDNS_OPTION_CODE.ECS,
       family: reader.read(16),
@@ -796,7 +885,8 @@ export class ECS {
     return rdata;
   }
 
-  static encode(rdata: DnsResourceECS, writer: BufferWriter) {
+  static encode(state: DnsEncodeState, rdata: DnsResourceECS) {
+    const { writer } = state;
     const ip = rdata.ip.split('.').map((s) => parseInt(s));
     writer.write(rdata.family, 16);
     writer.write(rdata.sourcePrefixLength, 8);
@@ -825,7 +915,8 @@ export class DnsCookie {
     };
   }
 
-  static decode(reader: BufferReader, length: number): DnsResourceDnsCookie {
+  static decode(state: DnsDecodeState, length: number): DnsResourceDnsCookie {
+    const { reader } = state;
     const clientCookie = new Uint8Array(8);
     for (let i = 0; i < 8; i += 1) {
       clientCookie[i] = reader.read(8);
@@ -847,10 +938,11 @@ export class DnsCookie {
   }
 
   static encode(
+    state: DnsEncodeState,
     rdata: DnsResourceDnsCookie,
-    writer: BufferWriter,
     info: DnsResourceOPT,
   ) {
+    const { writer } = state;
     if (rdata.clientCookie.length == 8) {
       for (let i = 0; i < 8; i += 1) {
         writer.write(rdata.clientCookie[i], 8);
@@ -877,16 +969,16 @@ export class DnsCookie {
  * @docs https://datatracker.ietf.org/doc/html/rfc6891
  */
 export class ResourceOPT {
-  static encode(writer: BufferWriter, info: DnsResourceOPT) {
+  static encode(state: DnsEncodeState, info: DnsResourceOPT) {
     for (const rdata of info.rdata) {
-      writer.write(rdata.optionCode, 16);
-      const offsetOptionRdata = Resource.encodeLengthReserve(writer, 16);
+      state.writer.write(rdata.optionCode, 16);
+      const offsetOptionRdata = Resource.encodeLengthReserve(state, 16);
       switch (rdata.optionCode) {
         case EDNS_OPTION_CODE.ECS:
-          ECS.encode(rdata as DnsResourceECS, writer);
+          ECS.encode(state, rdata as DnsResourceECS);
           break;
         case EDNS_OPTION_CODE.COOKIE:
-          DnsCookie.encode(rdata as DnsResourceDnsCookie, writer, info);
+          DnsCookie.encode(state, rdata as DnsResourceDnsCookie, info);
           break;
         default:
           info.errors.push(
@@ -894,22 +986,23 @@ export class ResourceOPT {
           );
           break;
       }
-      Resource.encodeLength(writer, offsetOptionRdata, 16);
+      Resource.encodeLength(state, offsetOptionRdata, 16);
     }
   }
 
-  static decode(reader: BufferReader, length: number, info: DnsResourceOPT) {
+  static decode(state: DnsDecodeState, length: number, info: DnsResourceOPT) {
+    const { reader } = state;
     info.rdata = [];
     while (length) {
       const optionCode = reader.read(16);
       const optionLength = reader.read(16); // In octet (https://tools.ietf.org/html/rfc6891#page-8)
       switch (optionCode) {
         case EDNS_OPTION_CODE.ECS: {
-          info.rdata.push(ECS.decode(reader, optionLength));
+          info.rdata.push(ECS.decode(state, optionLength));
           break;
         }
         case EDNS_OPTION_CODE.COOKIE: {
-          info.rdata.push(DnsCookie.decode(reader, optionLength));
+          info.rdata.push(DnsCookie.decode(state, optionLength));
           break;
         }
         default:
@@ -942,102 +1035,108 @@ export interface DnsPacket {
   additionals: DnsResource[];
 }
 
-export function encodeResource(writer: BufferWriter, info: DnsResource) {
-  const offset = Resource.encode(writer, info);
+export function encodeResource(state: DnsEncodeState, info: DnsResource) {
+  const offset = Resource.encode(state, info);
   switch (info.type) {
     case TYPE.A:
-      ResourceA.encode(writer, info as DnsResourceA);
+      ResourceA.encode(state, info as DnsResourceA);
       break;
-    case TYPE.AAAA:
-      ResourceAAAA.encode(writer, info as DnsResourceAAAA);
+    case TYPE.NS:
+      ResourceNS.encode(state, info as DnsResourceNS);
       break;
     case TYPE.CNAME:
     case TYPE.PTR:
-      ResourceCNAME.encode(writer, info as DnsResourceCNAME);
-      break;
-    case TYPE.DNAME:
-      ResourceDNAME.encode(writer, info as DnsResourceDNAME);
-      break;
-    case TYPE.NAPTR:
-      ResourceNAPTR.encode(writer, info as DnsResourceNAPTR);
-      break;
-    case TYPE.NS:
-      ResourceNS.encode(writer, info as DnsResourceNS);
-      break;
-    case TYPE.MX:
-      ResourceMX.encode(writer, info as DnsResourceMX);
-      break;
-    case TYPE.SVCB:
-    case TYPE.HTTPS:
-      ResourceSVCB.encode(writer, info as DnsResourceSVCB);
+      ResourceCNAME.encode(state, info as DnsResourceCNAME);
       break;
     case TYPE.SOA:
-      ResourceSOA.encode(writer, info as DnsResourceSOA);
+      ResourceSOA.encode(state, info as DnsResourceSOA);
+      break;
+    case TYPE.HINFO:
+      ResourceHINFO.encode(state, info as DnsResourceHINFO);
+      break;
+    case TYPE.MX:
+      ResourceMX.encode(state, info as DnsResourceMX);
       break;
     case TYPE.TXT:
     case TYPE.SPF:
-      ResourceSPF.encode(writer, info as DnsResourceSPF);
+      ResourceSPF.encode(state, info as DnsResourceSPF);
+      break;
+    case TYPE.AAAA:
+      ResourceAAAA.encode(state, info as DnsResourceAAAA);
       break;
     case TYPE.SRV:
-      ResourceSRV.encode(writer, info as DnsResourceSRV);
+      ResourceSRV.encode(state, info as DnsResourceSRV);
+      break;
+    case TYPE.NAPTR:
+      ResourceNAPTR.encode(state, info as DnsResourceNAPTR);
+      break;
+    case TYPE.DNAME:
+      ResourceDNAME.encode(state, info as DnsResourceDNAME);
       break;
     case TYPE.OPT /* EDNS */:
-      ResourceOPT.encode(writer, info as DnsResourceOPT);
+      ResourceOPT.encode(state, info as DnsResourceOPT);
+      break;
+    case TYPE.SVCB:
+    case TYPE.HTTPS:
+      ResourceSVCB.encode(state, info as DnsResourceSVCB);
       break;
     default:
       info.errors.push(
         `encodeResource Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type}`,
       );
   }
-  Resource.encodeLength(writer, offset);
+  Resource.encodeLength(state, offset);
 }
 
-function decodeResource(reader: BufferReader, info: DnsResource) {
-  const length = Resource.decode(reader, info);
+function decodeResource(state: DnsDecodeState, info: DnsResource) {
+  const length = Resource.decode(state, info);
   switch (info.type) {
     case TYPE.A:
-      ResourceA.decode(reader, length, info as DnsResourceA);
+      ResourceA.decode(state, length, info as DnsResourceA);
       break;
-    case TYPE.AAAA:
-      ResourceAAAA.decode(reader, length, info as DnsResourceAAAA);
+    case TYPE.NS:
+      ResourceNS.decode(state, length, info as DnsResourceNS);
       break;
     case TYPE.CNAME:
     case TYPE.PTR:
-      ResourceCNAME.decode(reader, length, info as DnsResourceCNAME);
-      break;
-    case TYPE.DNAME:
-      ResourceDNAME.decode(reader, length, info as DnsResourceDNAME);
-      break;
-    case TYPE.NAPTR:
-      ResourceNAPTR.decode(reader, length, info as DnsResourceNAPTR);
-      break;
-    case TYPE.NS:
-      ResourceNS.decode(reader, length, info as DnsResourceNS);
-      break;
-    case TYPE.MX:
-      ResourceMX.decode(reader, length, info as DnsResourceMX);
-      break;
-    case TYPE.SVCB:
-    case TYPE.HTTPS:
-      ResourceSVCB.decode(reader, length, info as DnsResourceSVCB);
+      ResourceCNAME.decode(state, length, info as DnsResourceCNAME);
       break;
     case TYPE.SOA:
-      ResourceSOA.decode(reader, length, info as DnsResourceSOA);
+      ResourceSOA.decode(state, length, info as DnsResourceSOA);
+      break;
+    case TYPE.HINFO:
+      ResourceHINFO.decode(state, length, info as DnsResourceHINFO);
+      break;
+    case TYPE.MX:
+      ResourceMX.decode(state, length, info as DnsResourceMX);
       break;
     case TYPE.TXT:
     case TYPE.SPF:
-      ResourceSPF.decode(reader, length, info as DnsResourceSPF);
+      ResourceSPF.decode(state, length, info as DnsResourceSPF);
+      break;
+    case TYPE.AAAA:
+      ResourceAAAA.decode(state, length, info as DnsResourceAAAA);
       break;
     case TYPE.SRV:
-      ResourceSRV.decode(reader, length, info as DnsResourceSRV);
+      ResourceSRV.decode(state, length, info as DnsResourceSRV);
+      break;
+    case TYPE.NAPTR:
+      ResourceNAPTR.decode(state, length, info as DnsResourceNAPTR);
+      break;
+    case TYPE.DNAME:
+      ResourceDNAME.decode(state, length, info as DnsResourceDNAME);
       break;
     case TYPE.OPT /* EDNS */:
-      ResourceOPT.decode(reader, length, info as DnsResourceOPT);
+      ResourceOPT.decode(state, length, info as DnsResourceOPT);
+      break;
+    case TYPE.SVCB:
+    case TYPE.HTTPS:
+      ResourceSVCB.decode(state, length, info as DnsResourceSVCB);
       break;
     default: {
       const bufferToSkip = new Uint8Array(length);
       for (let i = 0; i < length; i += 1) {
-        bufferToSkip[i] = reader.read(8);
+        bufferToSkip[i] = state.reader.read(8);
       }
       info.errors.push(
         `decodeResource Not supported DNS TYPE ${TYPE_INVERTED[info.type]}:${info.type} {${bufferToSkip.toString()}}`,
@@ -1047,51 +1146,51 @@ function decodeResource(reader: BufferReader, info: DnsResource) {
 }
 
 function decodeSingle(
-  reader: BufferReader,
+  state: DnsDecodeState,
   tag: string,
   parsed: DnsBasic[],
   count: number,
-  errors: string[],
   isQuestion: boolean = false,
 ) {
   for (let i = 0; i < count; i += 1) {
     try {
       const info = createDnsBasic();
       if (isQuestion) {
-        Question.decode(reader, info);
+        Question.decode(state, info);
       } else {
-        decodeResource(reader, info as DnsResource);
+        decodeResource(state, info as DnsResource);
       }
       if (info.errors.length > 0) {
-        errors.push(`decode ${tag} ${i} has errors: ${info.errors.join(';')}`);
+        state.errors.push(
+          `decode ${tag} ${i} has errors: ${info.errors.join(';')}`,
+        );
       }
       parsed.push(info);
     } catch (e) {
-      errors.push((e as Error).message);
+      state.errors.push((e as Error).message);
     }
   }
 }
 
 function encodeSingle(
-  writer: BufferWriter,
+  state: DnsEncodeState,
   tag: string,
   dnsBasicList: DnsBasic[],
-  errors: string[],
   isQuestion: boolean = false,
 ) {
   for (let i = 0; i < dnsBasicList.length; i += 1) {
     try {
       const info = dnsBasicList[i];
       if (isQuestion) {
-        Question.encode(writer, info as DnsQuestion);
+        Question.encode(state, info as DnsQuestion);
       } else {
-        encodeResource(writer, info as DnsResource);
+        encodeResource(state, info as DnsResource);
       }
       if (info.errors.length > 0) {
-        errors.push(`${tag} ${i} has errors: ${info.errors.join(';')}`);
+        state.errors.push(`${tag} ${i} has errors: ${info.errors.join(';')}`);
       }
     } catch (e) {
-      errors.push((e as Error).message);
+      state.errors.push((e as Error).message);
     }
   }
 }
@@ -1107,6 +1206,31 @@ export class Packet {
     };
   }
 
+  static createDnsDecodeState(
+    buffer: Uint8Array,
+    decoder: TextDecoder,
+    errors: string[],
+  ): DnsDecodeState {
+    return {
+      errors: errors,
+      textDecoder: decoder,
+      reader: new BufferReader(buffer),
+      domainNameMap: new Map<number, string[]>(),
+    };
+  }
+
+  static createDnsEncodeState(
+    encoder: TextEncoder,
+    errors: string[],
+  ): DnsEncodeState {
+    return {
+      errors: errors,
+      textEncoder: encoder,
+      writer: new BufferWriter(),
+      domainNameMap: new Map<number, string[]>(),
+    };
+  }
+
   /**
    * [random header id]
    * @return {[type]} [description]
@@ -1115,57 +1239,42 @@ export class Packet {
     return (Math.random() * 65535) | 0;
   }
 
-  static decode(buffer: Uint8Array, errors: string[]) {
-    const reader = new BufferReader(buffer);
+  static decode(buffer: Uint8Array, decoder: TextDecoder, errors: string[]) {
+    const state: DnsDecodeState = Packet.createDnsDecodeState(
+      buffer,
+      decoder,
+      errors,
+    );
     const dnsParsed = Packet.create();
     let header: HeaderInfo | undefined;
     try {
-      header = Header.decode(reader);
+      header = Header.decode(state);
       dnsParsed.header = header;
     } catch (e) {
-      errors.push(`Error decoding DNS header: ${(e as Error).message}`);
+      state.errors.push(`Error decoding DNS header: ${(e as Error).message}`);
     }
     if (!header) {
       return dnsParsed;
     }
-    decodeSingle(
-      reader,
-      'questions',
-      dnsParsed.questions,
-      header.qdcount,
-      errors,
-      true,
-    );
-    decodeSingle(reader, 'answers', dnsParsed.answers, header.ancount, errors);
-    decodeSingle(
-      reader,
-      'authorities',
-      dnsParsed.authorities,
-      header.nscount,
-      errors,
-    );
-    decodeSingle(
-      reader,
-      'additionals',
-      dnsParsed.additionals,
-      header.arcount,
-      errors,
-    );
+    decodeSingle(state, 'questions', dnsParsed.questions, header.qdcount, true);
+    decodeSingle(state, 'answers', dnsParsed.answers, header.ancount);
+    decodeSingle(state, 'authorities', dnsParsed.authorities, header.nscount);
+    decodeSingle(state, 'additionals', dnsParsed.additionals, header.arcount);
     return dnsParsed;
   }
 
-  static encode(dnsEntry: DnsPacket, errors: string[]) {
-    const writer = new BufferWriter();
+  static encode(dnsEntry: DnsPacket, encoder: TextEncoder, errors: string[]) {
+    const state = Packet.createDnsEncodeState(encoder, errors);
     dnsEntry.header.qdcount = dnsEntry.questions.length;
     dnsEntry.header.ancount = dnsEntry.answers.length;
     dnsEntry.header.nscount = dnsEntry.authorities.length;
     dnsEntry.header.arcount = dnsEntry.additionals.length;
-    Header.encode(writer, dnsEntry.header);
-    encodeSingle(writer, 'questions', dnsEntry.questions, errors, true);
-    encodeSingle(writer, 'answers', dnsEntry.answers, errors);
-    encodeSingle(writer, 'authorities', dnsEntry.authorities, errors);
-    encodeSingle(writer, 'additionals', dnsEntry.additionals, errors);
+    Header.encode(state, dnsEntry.header);
+    encodeSingle(state, 'questions', dnsEntry.questions, true);
+    encodeSingle(state, 'answers', dnsEntry.answers);
+    encodeSingle(state, 'authorities', dnsEntry.authorities);
+    encodeSingle(state, 'additionals', dnsEntry.additionals);
 
-    return writer.toBuffer();
+    return state.writer.toBuffer();
   }
 }

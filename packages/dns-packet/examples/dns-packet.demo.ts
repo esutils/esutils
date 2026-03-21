@@ -4,6 +4,7 @@ import { type DnsQuery, queryDnsParallel } from './dns-util';
 import { type DnsResponse } from './dns-proxy-utils';
 
 async function demoParallel() {
+  const textEncoder = new TextEncoder();
   const queryPacket = Packet.create();
   queryPacket.header.id = Packet.randomHeaderId();
   // https://github.com/song940/node-dns/issues/29
@@ -16,7 +17,7 @@ async function demoParallel() {
       errors: [],
     },
   ];
-  const requestBuffer = Packet.encode(queryPacket, []);
+  const requestBuffer = Packet.encode(queryPacket, textEncoder, []);
   const query: DnsQuery = {
     type: TYPE.A,
     protocolType: 'udp',

@@ -1,8 +1,6 @@
 import assert from 'assert';
 import {
   Name,
-  BufferWriter,
-  BufferReader,
   Header,
   Question,
   CLASS,
@@ -10,6 +8,7 @@ import {
   type DnsResourceA,
   type DnsResourceAAAA,
   Packet,
+  type DnsEncodeState,
 } from '@esutils/dns-packet';
 
 function dnsLiteralToUint8Array(arr: (number | string)[]) {
@@ -26,14 +25,16 @@ function dnsLiteralToUint8Array(arr: (number | string)[]) {
 }
 
 describe('dns-packet in typescript', () => {
-  let writer!: BufferWriter;
+  let encodeState!: DnsEncodeState;
+  const textEncoder = new TextEncoder();
+  const textDecoder = new TextDecoder();
   beforeEach(() => {
-    writer = new BufferWriter();
+    encodeState = Packet.createDnsEncodeState(textEncoder, []);
   });
 
   it('Name#encode', () => {
-    Name.encode('www.google.com', writer);
-    const name = writer.toBuffer();
+    Name.encode(encodeState, 'www.google.com');
+    const name = encodeState.writer.toBuffer();
     const pattern = dnsLiteralToUint8Array([
       3,
       'w',
@@ -63,13 +64,14 @@ describe('dns-packet in typescript', () => {
   ]);
 
   it('Name#decode', () => {
-    const reader = new BufferReader(response, 8 * 12);
-    expect(Name.decode(reader)).toEqual({ len: 10, name: 'www.z.cn' });
+    const decodeState = Packet.createDnsDecodeState(response, textDecoder, []);
+    decodeState.reader.offset = 8 * 12;
+    expect(Name.decode(decodeState, Question.create())).toEqual({ readed: 10, name: 'www.z.cn' });
 
-    reader.offset = 8 * 26;
-    const name = Name.decode(reader);
-    expect(reader.offset).toEqual(8 * 28);
-    expect(name).toEqual({ len: 2, name: 'www.z.cn' });
+    decodeState.reader.offset = 8 * 26;
+    const name = Name.decode(decodeState, Question.create());
+    expect(decodeState.reader.offset).toEqual(8 * 28);
+    expect(name).toEqual({ readed: 2, name: 'www.z.cn' });
   });
 
   it('Header#encode', () => {
@@ -78,9 +80,9 @@ describe('dns-packet in typescript', () => {
     header.qr = 1;
     header.qdcount = 1;
     header.ancount = 2;
-    Header.encode(writer, header);
+    Header.encode(encodeState, header);
 
-    expect(writer.toBuffer()).toEqual(
+    expect(encodeState.writer.toBuffer()).toEqual(
       Uint8Array.from([
         0x29, 0x64, 0x80, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,
       ]),
@@ -88,8 +90,8 @@ describe('dns-packet in typescript', () => {
   });
 
   test('Header#parse', () => {
-    const reader = new BufferReader(response, 0);
-    const header = Header.decode(reader);
+    const decodeState = Packet.createDnsDecodeState(response, textDecoder, []);
+    const header = Header.decode(decodeState);
     assert.equal(header.id, 0x2964);
     assert.equal(header.qr, 1);
     assert.equal(header.opcode, 0);
@@ -106,10 +108,10 @@ describe('dns-packet in typescript', () => {
 
   test('Question#encode', () => {
     const question = Question.create('google.com', TYPE.A, CLASS.IN);
-    //
-    Question.encode(writer, question);
+    const encodeState = Packet.createDnsEncodeState(textEncoder, []);
+    Question.encode(encodeState, question);
     assert.deepEqual(
-      writer.toBuffer(),
+      encodeState.writer.toBuffer(),
       Uint8Array.from([
         0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00,
         0x00, 0x01, 0x00, 0x01,
@@ -118,16 +120,17 @@ describe('dns-packet in typescript', () => {
   });
 
   test('Question#decode', () => {
-    const reader = new BufferReader(
+    const decodeState = Packet.createDnsDecodeState(
       Uint8Array.from([
         0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00,
         0x00, 0x01, 0x00, 0x01,
       ]),
-      0,
+      textDecoder,
+      [],
     );
 
     const question = Question.create('');
-    Question.decode(reader, question);
+    Question.decode(decodeState, question);
     assert.deepEqual(question, {
       name: 'google.com',
       type: TYPE.A,
@@ -137,7 +140,7 @@ describe('dns-packet in typescript', () => {
   });
 
   test('Packet#decode', () => {
-    const packet = Packet.decode(response, []);
+    const packet = Packet.decode(response, textDecoder, []);
     assert.equal(packet.questions[0].name, 'www.z.cn');
     assert.equal(packet.questions[0].type, TYPE.A);
     assert.equal(packet.questions[0].class, CLASS.IN);
@@ -168,7 +171,7 @@ describe('dns-packet in typescript', () => {
       ttl: 300,
       address: '2001:db8::::ff00:42:8329',
     });
-    const encoded = Packet.encode(packet, []);
-    assert.deepEqual(Packet.decode(encoded, []), packet);
+    const encoded = Packet.encode(packet, textEncoder, []);
+    assert.deepEqual(Packet.decode(encoded, textDecoder, []), packet);
   });
 });
