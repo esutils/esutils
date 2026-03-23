@@ -26,7 +26,7 @@ async function fetchDns(requestHex: string) {
     }, 3000);
     const response = await result.promise;
     if (response instanceof Uint8Array) {
-      console.log(`Response: ${Buffer.from(response).toString('hex')}`);
+      console.log(`Response for ${serverIp}:${serverPort} ${protocolType}: ${Buffer.from(response).toString('hex')}`);
     } else {
       console.error(`Error sending UDP request: ${response}`);
     }

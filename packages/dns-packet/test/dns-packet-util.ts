@@ -16,6 +16,7 @@ export function checkResourcePacketEncodeDecode(
   enableCheckCompressNameHex: boolean,
   hexBuf: string,
   expected: ReturnType<typeof Packet.decode>,
+  expectedErrors: string[] = [],
 ) {
   const buf = Buffer.from(hexBuf, 'hex');
   const errors = [] as string[];
@@ -23,7 +24,10 @@ export function checkResourcePacketEncodeDecode(
   const textEncoder = new TextEncoder();
   const decoded = Packet.decode(buf, textDecoder, errors);
   assert.deepStrictEqual(decoded, expected);
-  assert.deepEqual(errors, []);
+  assert.deepStrictEqual(errors, expectedErrors);
+  if (expectedErrors.length > 0) {
+    return;
+  }
   const encoded = Packet.encode(decoded, textEncoder, errors);
   assert.deepEqual(errors, []);
   const decodedAgain = Packet.decode(encoded, textDecoder, errors);
