@@ -32,6 +32,6 @@
   "main": "./dist/index.mjs",
   "dependencies": {
     "@esutils/delay": "^0.1.3",
-    "@esutils/invert": "^0.0.5"
+    "@esutils/invert": "^0.0.6"
   }
 }
