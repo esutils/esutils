@@ -1,4 +1,4 @@
-import { invert } from '@esutils/invert';
+import { invert, invertValues } from '@esutils/invert';
 
 describe('invert in typescript', () => {
   it('function type', () => {
@@ -16,5 +16,8 @@ describe('invert in typescript', () => {
       'bar': 'foo',
       'yyy': 'xxx'
     } as const);
+
+    const c = invertValues(a)
+    expect(c).toEqual(['bar', 'yyy'] as const);
   });
 });
