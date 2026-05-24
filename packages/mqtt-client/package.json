@@ -1,6 +1,6 @@
 {
   "name": "@esutils/mqtt-client",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,6 +19,9 @@
     "es2020",
     "es2022"
   ],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "yarn run -T tsc -p tsconfig.mjs.json",
     "prepublishOnly": "yarn run build",
@@ -28,7 +31,7 @@
   "types": "./dist/index.d.mts",
   "main": "./dist/index.mjs",
   "dependencies": {
-    "@esutils/deferred": "0.1.2",
-    "@esutils/mqtt-packet": "^0.0.2"
+    "@esutils/deferred": "0.1.5",
+    "@esutils/mqtt-packet": "^0.0.5"
   }
 }

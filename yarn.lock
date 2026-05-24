@@ -689,13 +689,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@esutils/deferred@npm:0.1.2, @esutils/deferred@workspace:packages/deferred":
+"@esutils/deferred@npm:0.1.5, @esutils/deferred@workspace:packages/deferred":
   version: 0.0.0-use.local
   resolution: "@esutils/deferred@workspace:packages/deferred"
   languageName: unknown
   linkType: soft
 
-"@esutils/delay@npm:^0.1.1, @esutils/delay@workspace:packages/delay":
+"@esutils/delay@npm:^0.1.3, @esutils/delay@workspace:packages/delay":
   version: 0.0.0-use.local
   resolution: "@esutils/delay@workspace:packages/delay"
   languageName: unknown
@@ -705,8 +705,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@esutils/dns-packet@workspace:packages/dns-packet"
   dependencies:
-    "@esutils/delay": "npm:^0.1.1"
-    "@esutils/invert": "npm:^0.0.1"
+    "@esutils/delay": "npm:^0.1.3"
+    "@esutils/invert": "npm:^0.0.5"
   languageName: unknown
   linkType: soft
 
@@ -716,7 +716,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@esutils/invert@npm:^0.0.1, @esutils/invert@workspace:packages/invert":
+"@esutils/invert@npm:^0.0.5, @esutils/invert@workspace:packages/invert":
   version: 0.0.0-use.local
   resolution: "@esutils/invert@workspace:packages/invert"
   languageName: unknown
@@ -726,12 +726,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@esutils/mqtt-client@workspace:packages/mqtt-client"
   dependencies:
-    "@esutils/deferred": "npm:0.1.2"
-    "@esutils/mqtt-packet": "npm:^0.0.2"
+    "@esutils/deferred": "npm:0.1.5"
+    "@esutils/mqtt-packet": "npm:^0.0.5"
   languageName: unknown
   linkType: soft
 
-"@esutils/mqtt-packet@npm:^0.0.2, @esutils/mqtt-packet@workspace:packages/mqtt-packet":
+"@esutils/mqtt-packet@npm:^0.0.5, @esutils/mqtt-packet@workspace:packages/mqtt-packet":
   version: 0.0.0-use.local
   resolution: "@esutils/mqtt-packet@workspace:packages/mqtt-packet"
   languageName: unknown

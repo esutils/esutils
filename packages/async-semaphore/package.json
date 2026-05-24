@@ -1,6 +1,6 @@
 {
   "name": "@esutils/async-semaphore",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -26,6 +26,9 @@
     "es2015",
     "es2020",
     "es2022"
+  ],
+  "files": [
+    "dist"
   ],
   "scripts": {
     "build": "yarn run -T tsc -p tsconfig.mjs.json",

@@ -1,6 +1,6 @@
 {
   "name": "@esutils/invert",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,6 +17,9 @@
     "es2015",
     "es2020",
     "es2022"
+  ],
+  "files": [
+    "dist"
   ],
   "scripts": {
     "build": "yarn run -T tsc -p tsconfig.mjs.json",
