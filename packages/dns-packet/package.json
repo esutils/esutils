@@ -1,6 +1,6 @@
 {
   "name": "@esutils/dns-packet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,6 +17,10 @@
     "es2015",
     "es2020",
     "es2022"
+  ],
+  "files": [
+    "dist",
+    "dist-webpack"
   ],
   "scripts": {
     "build": "yarn run -T tsc -p tsconfig.mjs.json",
