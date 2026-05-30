@@ -326,6 +326,38 @@ export abstract class BaseClient {
     return deferred.promise;
   }
 
+  /**
+   * Publishes a message to the broker.
+   *
+   * The returned promise's lifecycle depends on the QoS and the connection state:
+   *
+   * - QoS 0 (at most once): the promise resolves as soon as the packet is
+   *   written (when connected) or enqueued (when offline). There is no
+   *   acknowledgement, so a QoS 0 message that is later dropped from a full
+   *   queue does NOT reject — its promise has already resolved.
+   * - QoS 1 / 2 (at least / exactly once): the promise stays pending until the
+   *   matching PUBACK / PUBCOMP arrives. Such messages survive a disconnect via
+   *   two mechanisms: while offline they wait in the in-memory publish queue and
+   *   are sent on reconnect (`flushQueuedPublishes`); once sent they are tracked
+   *   in `outgoingStore` and re-sent with the `dup` flag if still unacknowledged
+   *   after a reconnect (`flushUnacknowledgedPublishes`). The default store is
+   *   in-memory, so this survives reconnects but not a process restart unless a
+   *   persistent `outgoingStore` is supplied. The promise is therefore
+   *   intentionally left pending across reconnects until acknowledged.
+   *
+   * `maxPublishQueue` is only a memory bound for offline publishes. If it is
+   * sized large enough for the application's memory budget and offline publish
+   * volume, QoS > 0 messages are never dropped by normal disconnect/reconnect
+   * flow. Queue overflow is the ONLY place a queued message is dropped. When
+   * the offline queue already holds `maxPublishQueue` entries, the oldest entry
+   * is evicted to make room for the new one. If that evicted entry is QoS > 0
+   * its promise rejects with `Error('publish queue full')`; an evicted QoS 0
+   * entry is silent (already resolved). Disconnecting does NOT drop or reject
+   * queued messages.
+   *
+   * Because a QoS > 0 promise can reject on queue overflow, callers should
+   * `await` it or attach a `.catch(...)` to avoid unhandled rejections.
+   */
   public async publish(
     topic: string,
     payloadIn: string | Uint8Array,
@@ -355,9 +387,15 @@ export abstract class BaseClient {
     if (this.connectionState === 'connected') {
       this.sendPublish(packet, deferred);
     } else {
+      if (!packet.qos) {
+        deferred.resolve();
+      }
       this.log('queueing publish');
       if (this.queuedPublishes.length >= this.maxPublishQueue) {
-        this.queuedPublishes.shift();
+        const shifted = this.queuedPublishes.shift();
+        if (shifted && shifted.packet.qos && shifted.packet.qos > 0) {
+          shifted.deferred.reject(new Error('publish queue full'));
+        }
       }
       this.queuedPublishes.push({ packet, deferred });
     }
