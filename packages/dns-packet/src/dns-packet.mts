@@ -117,6 +117,20 @@ export interface DnsBasicState {
   domainNameMap: Map<number, string[]>;
 }
 
+export const DNS_PACKET_MAX_ERRORS = 16;
+const ERROR_COUNT_EXCEEDED = 'error count exceeded';
+
+function errorLimitReached(errors: string[]): boolean {
+  if (errors.includes(ERROR_COUNT_EXCEEDED)) {
+    return true;
+  }
+  if (errors.length >= DNS_PACKET_MAX_ERRORS) {
+    errors.push(ERROR_COUNT_EXCEEDED);
+    return true;
+  }
+  return false;
+}
+
 export interface DnsDecodeState extends DnsBasicState {
   reader: BufferReader;
   textDecoder: TextDecoder;
@@ -1153,6 +1167,9 @@ function decodeSingle(
   isQuestion: boolean = false,
 ) {
   for (let i = 0; i < count; i += 1) {
+    if (errorLimitReached(state.errors)) {
+      break;
+    }
     try {
       const info = createDnsBasic();
       if (isQuestion) {
@@ -1179,6 +1196,9 @@ function encodeSingle(
   isQuestion: boolean = false,
 ) {
   for (let i = 0; i < dnsBasicList.length; i += 1) {
+    if (errorLimitReached(state.errors)) {
+      break;
+    }
     try {
       const info = dnsBasicList[i];
       if (isQuestion) {

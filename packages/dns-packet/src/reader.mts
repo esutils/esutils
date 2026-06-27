@@ -30,6 +30,12 @@ export class BufferReader {
    * @return {[type]}        [description]
    */
   static read(buffer: Uint8Array, offset: number, length: number) {
+    const bufferBits = buffer.byteLength * 8;
+    if (offset < 0 || offset + length > bufferBits) {
+      throw new RangeError(
+        `DNS packet read past end at bit ${offset}, length ${length}, buffer ${bufferBits} bits`,
+      );
+    }
     let a: number[] = [];
     let c = Math.ceil(length / 8);
     let l = Math.floor(offset / 8);
