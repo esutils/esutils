@@ -12,6 +12,14 @@ export function readStream(
   let expected = 0;
   return new Promise((resolve) => {
     let closed = false;
+    let resolved = false;
+    function finish(result: Uint8Array | Error) {
+      if (resolved) {
+        return;
+      }
+      resolved = true;
+      resolve(result);
+    }
     function done() {
       if (!closed) {
         closed = true;
@@ -20,15 +28,17 @@ export function readStream(
     }
     abortablePromise.abort = done;
 
-    socket.on('end', () => {
+    function onClosed() {
       if (closed) {
-        resolve(new Error('ClosedByAbort'));
+        finish(new Error('ClosedByAbort'));
       } else {
         closed = true;
-        resolve(new Error('Closed'));
+        finish(new Error('Closed'));
       }
-    });
-    socket.on('error', resolve);
+    }
+    socket.on('end', onClosed);
+    socket.on('close', onClosed);
+    socket.on('error', finish);
     socket.on('data', (chunk: Buffer) => {
       chunks.push(chunk);
       chunklen += chunk.length;
@@ -41,7 +51,7 @@ export function readStream(
         chunks[0] = Uint8Array.prototype.slice.call(chunks[0], 2);
       }
       if (chunklen >= 2 + expected) {
-        resolve(Buffer.concat(chunks, chunklen));
+        finish(Buffer.concat(chunks, chunklen));
         done();
       }
     });
