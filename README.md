@@ -2,16 +2,20 @@
 # Install
 
 ```bash
-curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh
+curl -sL https://deb.nodesource.com/setup_26.x -o nodesource_setup.sh
 sudo bash nodesource_setup.sh
 sudo apt-get install -y nodejs
 ```
 
 ```bat
-npm install -g corepack
-yarn set version berry
-npm i -g @yarnpkg/cli
+npm install -g corepack --force
+corepack enable
+yarn
 ```
+
+This project pins `"packageManager": "yarn@4.17.0"` in `package.json`. Corepack
+installs and runs that Yarn version automatically; do not rely on global Yarn
+1.x.
 
 # New solution
 

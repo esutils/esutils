@@ -1,7 +1,4 @@
 {
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
   "jest.jestCommandLine": "yarn test-only",
   "code-runner.executorMap": {
     "typescript": "tsx",

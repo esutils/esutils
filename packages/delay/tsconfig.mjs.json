@@ -4,6 +4,7 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
+    "rootDir": "src",
   },
   "include": [
     "src/**/*.mts"

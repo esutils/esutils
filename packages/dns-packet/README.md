@@ -7,15 +7,15 @@ This is a fork implementation of <https://github.com/lsongdev/node-dns>
 
 ```bash
 yarn build
-yarn webpack
+yarn vite
 ```
 
 ## Running dns-proxy
 
 ```powershell
-yarn run webpack
+yarn run vite
 $env:DNS_PORT="553"
-node dist-webpack/dns-proxy.cjs `
+node dist-vite/dns-proxy.cjs `
 --dns main 114.114.114.114 `
 --dns main 223.5.5.5 `
 --dns main 180.76.76.76 `
@@ -27,7 +27,7 @@ node dist-webpack/dns-proxy.cjs `
 --domain-list default examples/domain-list-main.txt `
 --domain-list main examples/domain-list-main.txt `
 --domain-list auxiliary examples/domain-list-auxiliary.txt `
---log auxiliary dist-webpack/auxiliary.log
+--log auxiliary dist-vite/auxiliary.log
 
 ```
 
@@ -35,7 +35,7 @@ Under Ubuntu
 
 ```bash
 sudo /sbin/setcap 'cap_net_bind_service=ep' `which node`
-node dist-webpack/dns-proxy.cjs  \
+node dist-vite/dns-proxy.cjs  \
 node --import=tsx examples/dns-proxy.ts \
 --dns main 114.114.114.114 \
 --dns main 223.5.5.5 \
@@ -48,7 +48,7 @@ node --import=tsx examples/dns-proxy.ts \
 --domain-list main examples/domain-list-main.txt \
 --domain-list main examples/domain-list-main.txt \
 --domain-list auxiliary examples/domain-list-auxiliary.txt \
---log auxiliary dist-webpack/auxiliary.log
+--log auxiliary dist-vite/auxiliary.log
 
 dig baidu.com @127.0.0.1
 dig mirrors.tuna.tsinghua.edu.cn @127.0.0.1

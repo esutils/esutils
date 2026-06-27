@@ -26,7 +26,7 @@
         "--domain-list", "default", "examples/domain-list-main.txt",
         "--domain-list", "main", "examples/domain-list-main.txt",
         "--domain-list", "auxiliary", "examples/domain-list-auxiliary.txt",
-        "--log", "auxiliary", "dist-webpack/auxiliary.log"
+        "--log", "auxiliary", "dist-vite/auxiliary.log"
       ],
     }
   ]

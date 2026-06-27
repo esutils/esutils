@@ -20,12 +20,12 @@
   ],
   "files": [
     "dist",
-    "dist-webpack"
+    "dist-vite"
   ],
   "scripts": {
     "build": "yarn run -T tsc -p tsconfig.mjs.json",
-    "webpack": "yarn run -T webpack",
-    "prepublishOnly": "yarn run build && yarn run -T webpack",
+    "vite": "yarn run -T vite build",
+    "prepublishOnly": "yarn run build && yarn run -T vite build",
     "dns-proxy": "node --import=tsx examples/dns-proxy.ts",
     "dns-proxy-tsx": "yarn  run -T tsx examples/dns-proxy.ts",
     "test": "yarn run build && node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.ts",

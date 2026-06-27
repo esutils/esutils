@@ -14,29 +14,21 @@
     "check": "tsc --noEmit --project tsconfig.json",
     "test-only": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.ts",
     "test": "yarn run build && yarn run test-only",
-    "lint": "eslint .",
+    "lint": "vite build",
     "watch": " tsc --build --watch tsconfig.mjs.json"
   },
   "workspaces": [
     "packages/*"
   ],
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.9.1",
-    "eslint": "^10.4.0",
-    "eslint-plugin-jest": "^29.15.2",
+    "@types/node": "^26.0.1",
     "jest": "^30.4.2",
-    "jiti": "^2.7.0",
     "ts-jest": "^29.4.11",
-    "ts-loader": "9.5.7",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.22.3",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.59.4",
-    "webpack": "^5.107.1",
-    "webpack-cli": "^7.0.2",
-    "webpack-dev-server": "^5.2.4"
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
+    "vite-plugin-checker": "^0.14.4"
   },
-  "packageManager": "yarn@4.13.0"
+  "packageManager": "yarn@4.17.0"
 }

@@ -11,6 +11,6 @@
     "src/**/*.mts",
     "test/**/*.cjs",
     "test/**/*.mjs",
-    "test/**/*.ts",
+    "test/**/*.ts", "test/async-semaphore-in-cjs-pure.test.js",
   ]
 }
