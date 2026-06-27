@@ -1,11 +1,19 @@
+# esutils
 
-# Install
+TypeScript utility packages published under `@esutils/*`. This repo is a Yarn 4
+workspace monorepo.
+
+## Install
+
+Linux (Node.js 26 via NodeSource):
 
 ```bash
 curl -sL https://deb.nodesource.com/setup_26.x -o nodesource_setup.sh
 sudo bash nodesource_setup.sh
 sudo apt-get install -y nodejs
 ```
+
+Windows (Corepack + project dependencies):
 
 ```bat
 npm install -g corepack --force
@@ -17,30 +25,51 @@ This project pins `"packageManager": "yarn@4.17.0"` in `package.json`. Corepack
 installs and runs that Yarn version automatically; do not rely on global Yarn
 1.x.
 
-# New solution
+## Scripts
+
+From the repo root:
 
 ```bat
-yarn init
-yarn add -D typescript ts-node ts-jest @types/node @types/jest
-yarn run tsc --init
+yarn build
+yarn test
+yarn lint
+yarn watch
 ```
 
-# New module
+- `build` - compile all workspace packages with `tsc --build`
+- `test` - build, then run Jest across the monorepo
+- `lint` - TypeScript project check via Vite and `vite-plugin-checker`
+- `watch` - incremental TypeScript rebuild
 
-How to Create a Hybrid NPM Module for ESM and CommonJS is referenced
-to <https://www.sensedeep.com/blog/posts/2021/how-to-create-single-source-npm-module.html>
-
-# Install eslint support package
+Build a single workspace:
 
 ```bat
-yarn add -W -D eslint-config-airbnb eslint
-yarn add -W -D eslint-plugin-jsx-a11y eslint-plugin-import eslint-plugin-react eslint-plugin-react-hooks
-yarn add -W -D eslint-config-airbnb-typescript @typescript-eslint/eslint-plugin @typescript-eslint/parser
+yarn workspace @esutils/deferred run build
 ```
 
-# Publish package
+## New package
+
+Packages live under `packages/*`, use `"type": "module"`, compile `.mts` sources
+from `src/` to `dist/`, and expose ESM entry points (`main`, `types`).
+
+Typical steps:
+
+1. Create `packages/<name>/` with `package.json`, `tsconfig.mjs.json`, `src/`,
+   and tests. Use an existing package such as `@esutils/deferred` as a template.
+2. Add the new `tsconfig.mjs.json` to root `tsconfig.mjs.json` references.
+3. Run `yarn build` and `yarn test`.
+
+Root `devDependencies` already provide TypeScript, Jest, Vite, and related
+tooling for all workspaces.
+
+## Publish package
 
 ```bat
 cd packages/deferred
+yarn run build
 npm publish --access public
 ```
+
+Some packages have extra release steps. For example, `@esutils/dns-packet` also
+runs `yarn vite` to produce `dist-vite/dns-proxy.cjs`; see
+[packages/dns-packet/README.md](packages/dns-packet/README.md).
