@@ -15,6 +15,7 @@
     "test-only": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.ts",
     "test": "yarn run build && yarn run test-only",
     "lint": "vite build",
+    "pack": "yarn workspace @esutils/dns-packet run vite",
     "watch": " tsc --build --watch tsconfig.mjs.json"
   },
   "workspaces": [

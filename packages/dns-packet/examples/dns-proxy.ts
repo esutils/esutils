@@ -1,12 +1,15 @@
 import * as udp from 'dgram';
 import * as fs from 'fs';
 
+import pkg from '../package.json';
 import { handleDnsRequest } from './dns-util';
 import {
   updateDomains,
   AllDomainList,
   AllDnsServerInfo,
 } from './dns-proxy-utils';
+
+const DnsProxyVersion = pkg.version;
 
 const DnsPort = parseInt(process.env.DNS_PORT ?? '53', 10);
 
@@ -108,6 +111,7 @@ async function startDnsServer() {
     const { port } = address;
     const { family } = address;
     const ipaddr = address.address;
+    console.log(`Server version: ${DnsProxyVersion}`);
     console.log(`Server is listening at port: ${port}`);
     console.log(`Server ip: ${ipaddr}`);
     console.log(`Server is IP4/IP6: ${family}`);

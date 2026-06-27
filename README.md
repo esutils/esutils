@@ -71,5 +71,11 @@ npm publish --access public
 ```
 
 Some packages have extra release steps. For example, `@esutils/dns-packet` also
-runs `yarn vite` to produce `dist-vite/dns-proxy.cjs`; see
-[packages/dns-packet/README.md](packages/dns-packet/README.md).
+runs `yarn run pack` to produce `dist-vite/dns-proxy.cjs`. To run the TypeScript
+source during development:
+
+```bash
+node --import=tsx packages/dns-packet/examples/dns-proxy.ts --help
+```
+
+See [packages/dns-packet/README.md](packages/dns-packet/README.md).
