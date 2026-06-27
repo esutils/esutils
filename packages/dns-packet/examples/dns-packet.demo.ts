@@ -1,5 +1,6 @@
 import { CLASS, TYPE, Packet } from '@esutils/dns-packet';
 
+import { buildDnsQueryParameters } from './dns-query';
 import { type DnsQuery, queryDnsParallel } from './dns-util';
 import { type DnsResponse } from './dns-proxy-utils';
 
@@ -30,16 +31,19 @@ async function demoParallel() {
   };
   const dnsResultA: DnsResponse[] = [];
   await queryDnsParallel(
-    [
-      {
-        ip: '1.1.1.1',
-        port: 53,
-      },
-      {
-        ip: '1.1.1.2',
-        port: 53,
-      },
-    ],
+    buildDnsQueryParameters(
+      [
+        {
+          ip: '1.1.1.1',
+          port: 53,
+        },
+        {
+          ip: '1.1.1.2',
+          port: 53,
+        },
+      ],
+      'udp',
+    ),
     query,
     dnsResultA,
     1000,
@@ -51,16 +55,19 @@ async function demoParallel() {
   // 180.76.76.76
   const dnsResultB: DnsResponse[] = [];
   await queryDnsParallel(
-    [
-      {
-        ip: '114.114.114.114',
-        port: 53,
-      },
-      {
-        ip: '223.5.5.5',
-        port: 53,
-      },
-    ],
+    buildDnsQueryParameters(
+      [
+        {
+          ip: '114.114.114.114',
+          port: 53,
+        },
+        {
+          ip: '223.5.5.5',
+          port: 53,
+        },
+      ],
+      'udp',
+    ),
     query,
     dnsResultB,
     1000,

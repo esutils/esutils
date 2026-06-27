@@ -15,9 +15,12 @@ async function fetchDns(requestHex: string) {
   }
   const requestBuffer = Buffer.from(requestHex, 'hex') as Uint8Array;
   try {
-    const result = queryDnsBuffer(requestBuffer, protocolType, {
-      ip: serverIp,
-      port: serverPort,
+    const result = queryDnsBuffer(requestBuffer, {
+      protocolType,
+      serverAddress: {
+        ip: serverIp,
+        port: serverPort,
+      },
     });
     setTimeout(() => {
       if (result.abort) {

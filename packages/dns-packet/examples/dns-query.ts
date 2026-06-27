@@ -18,11 +18,26 @@ export type DnsQueryProtocolType =
   | 'https'
   | 'h2';
 
+export interface DnsQueryParameters {
+  protocolType: DnsQueryProtocolType;
+  serverAddress: DnsQueryServerAddress;
+}
+
+export function buildDnsQueryParameters(
+  serverAddresses: DnsQueryServerAddress[],
+  protocolType: DnsQueryProtocolType,
+): DnsQueryParameters[] {
+  return serverAddresses.map((serverAddress) => ({
+    protocolType,
+    serverAddress,
+  }));
+}
+
 export function queryDnsBuffer(
   requestBuffer: Uint8Array,
-  protocolType: DnsQueryProtocolType,
-  serverAddress: DnsQueryServerAddress,
+  parameters: DnsQueryParameters,
 ): AbortablePromise<Uint8Array> {
+  const { protocolType, serverAddress } = parameters;
   const response: AbortablePromise<Uint8Array> = {
     promise: Promise.resolve(new Error('Not supported')),
   };

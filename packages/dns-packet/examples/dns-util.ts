@@ -7,9 +7,10 @@ import {
 import { delay } from '@esutils/delay';
 
 import {
+  buildDnsQueryParameters,
   queryDnsBuffer,
+  type DnsQueryParameters,
   type DnsQueryProtocolType,
-  type DnsQueryServerAddress,
 } from './dns-query';
 import {
   type DnsResponse,
@@ -44,11 +45,7 @@ export async function queryDns(
 ) {
   const textDecoder = new TextDecoder();
   const dnsResponse = dnsResponses[queryPos];
-  const result = queryDnsBuffer(
-    query.requestBuffer,
-    query.protocolType,
-    dnsResponse.serverAddress,
-  );
+  const result = queryDnsBuffer(query.requestBuffer, dnsResponse.parameters);
   dnsQueryState.aborts[queryPos] = result.abort;
   const responseBufferOrError = await result.promise;
   if (responseBufferOrError instanceof Uint8Array) {
@@ -63,19 +60,19 @@ export async function queryDns(
 }
 
 export async function queryDnsParallel(
-  serverAddresses: DnsQueryServerAddress[],
+  queryParameters: DnsQueryParameters[],
   query: DnsQuery,
   dnsResponses: DnsResponse[],
   timeout: number,
 ): Promise<number[]> {
-  for (const serverAddress of serverAddresses) {
+  for (const parameters of queryParameters) {
     dnsResponses.push({
-      serverAddress: serverAddress,
+      parameters: parameters,
       errors: [],
     });
   }
   const dnsQueryState: DnsQueryState = {
-    aborts: new Array<AbortFunction>(serverAddresses.length),
+    aborts: new Array<AbortFunction>(queryParameters.length),
   };
   const promises: Promise<void>[] = [];
   for (let i = 0; i < dnsResponses.length; i += 1) {
@@ -147,7 +144,7 @@ export async function dnsFetchResponseBuffer(
 
   const dnsServer = getDnsServerInfo(query.domainName);
   const dnsResponseIndexes = await queryDnsParallel(
-    dnsServer.server.dnsList,
+    buildDnsQueryParameters(dnsServer.server.dnsList, query.protocolType),
     query,
     dnsResponses,
     timeout,
@@ -181,7 +178,7 @@ export async function dnsFetchResponseBuffer(
     query.type,
     response,
     dnsServer,
-    dnsClientChoosed.serverAddress,
+    dnsClientChoosed.parameters.serverAddress,
   );
   if (dnsServer.server.logFile && newAnswerLog.length > 0) {
     dnsServer.server.logFile.write(newAnswerLog);
@@ -208,7 +205,7 @@ export function dumpDnsResponses(query: DnsQuery, dnsResponses: DnsResponse[]) {
   message += ` requestBuffer: ${Buffer.from(query.requestBuffer).toString('hex')}\n`;
   message += ` responseBufferC: ${Buffer.from(query.responseBuffer).toString('hex')}\n`;
   for (const dnsResponse of dnsResponses) {
-    message += ` By ${dnsResponse.serverAddress.ip}\n`;
+    message += ` By ${dnsResponse.parameters.serverAddress.ip} ${dnsResponse.parameters.protocolType}\n`;
     if (dnsResponse.responseBuffer) {
       message += `  responseBuffer: ${Buffer.from(dnsResponse.responseBuffer).toString('hex')}\n`;
       message += `  response: ${JSON.stringify(dnsResponse.response)}\n`;

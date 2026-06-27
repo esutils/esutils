@@ -10,7 +10,7 @@ import {
 test('check sort dns clients single', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
@@ -23,14 +23,14 @@ test('check sort dns clients single', () => {
 test('check sort dns clients [response, !response]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
       responseBuffer: new Uint8Array(0),
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
@@ -43,14 +43,14 @@ test('check sort dns clients [response, !response]', () => {
 test('check sort dns clients [answers 1, answers 1]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
       responseBuffer: undefined,
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
@@ -65,14 +65,14 @@ test('check sort dns clients [answers 1, answers 1]', () => {
 test('check sort dns clients [answers 1, answers 2]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
       responseBuffer: undefined,
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
@@ -87,14 +87,14 @@ test('check sort dns clients [answers 1, answers 2]', () => {
 test('check sort dns clients [authorities 1, authorities 2]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
       responseBuffer: undefined,
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
@@ -111,14 +111,14 @@ test('check sort dns clients [authorities 1, authorities 2]', () => {
 test('check sort dns clients [!response, response]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
       responseBuffer: new Uint8Array(0),
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: Packet.create(),
@@ -131,14 +131,14 @@ test('check sort dns clients [!response, response]', () => {
 test('check sort dns clients [!responseBuffer, responseBuffer]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
       responseBuffer: undefined,
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
@@ -151,14 +151,14 @@ test('check sort dns clients [!responseBuffer, responseBuffer]', () => {
 test('check sort dns clients [responseBuffer, !responseBuffer]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
       responseBuffer: new Uint8Array(0),
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
@@ -171,21 +171,21 @@ test('check sort dns clients [responseBuffer, !responseBuffer]', () => {
 test('check sort dns clients [responseBuffer,responseBuffer,responseBuffer]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
       responseBuffer: new Uint8Array(0),
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
       responseBuffer: new Uint8Array(0),
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
@@ -198,21 +198,21 @@ test('check sort dns clients [responseBuffer,responseBuffer,responseBuffer]', ()
 test('check sort dns clients [!responseBuffer,!responseBuffer,!responseBuffer]', () => {
   const dnsResponses: DnsResponse[] = [
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
       responseBuffer: undefined,
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,
       responseBuffer: undefined,
     },
     {
-      serverAddress: { ip: '', port: 0 },
+      parameters: { protocolType: 'udp', serverAddress: { ip: '', port: 0 } },
       errors: [],
       error: new Error(''),
       response: undefined,

@@ -9,7 +9,10 @@ import {
   TYPE_INVERTED,
 } from '@esutils/dns-packet';
 
-import { type DnsQueryServerAddress } from './dns-query';
+import {
+  type DnsQueryParameters,
+  type DnsQueryServerAddress,
+} from './dns-query';
 
 export interface DnsServerInfo {
   tag: string;
@@ -29,8 +32,7 @@ export interface DnsServerDomainList {
 }
 
 export interface DnsResponse {
-  serverAddress: DnsQueryServerAddress;
-
+  parameters: DnsQueryParameters;
   errors: string[];
   response?: DnsPacket;
   responseBuffer?: Uint8Array;
