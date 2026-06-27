@@ -2,7 +2,6 @@ import { CLASS, TYPE, Packet } from '@esutils/dns-packet';
 
 import { buildDnsQueryParameters } from './dns-query';
 import { type DnsQuery, queryDnsParallel } from './dns-util';
-import { type DnsResponse } from './dns-proxy-utils';
 
 async function demoParallel() {
   const textEncoder = new TextEncoder();
@@ -29,8 +28,7 @@ async function demoParallel() {
     request: queryPacket,
     responseBuffer: requestBuffer,
   };
-  const dnsResultA: DnsResponse[] = [];
-  await queryDnsParallel(
+  const { responses: dnsResultA } = await queryDnsParallel(
     buildDnsQueryParameters(
       [
         {
@@ -45,7 +43,6 @@ async function demoParallel() {
       'udp',
     ),
     query,
-    dnsResultA,
     1000,
   );
   dnsResultA[0].responseBuffer = undefined;
@@ -53,8 +50,7 @@ async function demoParallel() {
   console.log(JSON.stringify(dnsResultA, null, 2));
 
   // 180.76.76.76
-  const dnsResultB: DnsResponse[] = [];
-  await queryDnsParallel(
+  const { responses: dnsResultB } = await queryDnsParallel(
     buildDnsQueryParameters(
       [
         {
@@ -69,7 +65,6 @@ async function demoParallel() {
       'udp',
     ),
     query,
-    dnsResultB,
     1000,
   );
   dnsResultB[0].responseBuffer = undefined;

@@ -37,6 +37,12 @@ export interface DnsQueryState {
 
 export type DnsSendResponseBuffer = (responseBuffer: Uint8Array) => void;
 
+/** responses and indexes have the same length. */
+export interface DnsQueryParallelResult {
+  responses: DnsResponse[];
+  indexes: number[];
+}
+
 export async function queryDns(
   dnsQueryState: DnsQueryState,
   dnsResponses: DnsResponse[],
@@ -62,15 +68,12 @@ export async function queryDns(
 export async function queryDnsParallel(
   queryParameters: DnsQueryParameters[],
   query: DnsQuery,
-  dnsResponses: DnsResponse[],
   timeout: number,
-): Promise<number[]> {
-  for (const parameters of queryParameters) {
-    dnsResponses.push({
-      parameters: parameters,
-      errors: [],
-    });
-  }
+): Promise<DnsQueryParallelResult> {
+  const dnsResponses: DnsResponse[] = queryParameters.map((parameters) => ({
+    parameters: parameters,
+    errors: [],
+  }));
   const dnsQueryState: DnsQueryState = {
     aborts: new Array<AbortFunction>(queryParameters.length),
   };
@@ -108,7 +111,7 @@ export async function queryDnsParallel(
       }
     }
   }
-  return dnsResponseIndexes;
+  return { responses: dnsResponses, indexes: dnsResponseIndexes };
 }
 
 export async function dnsFetchResponseBuffer(
@@ -143,12 +146,13 @@ export async function dnsFetchResponseBuffer(
   }
 
   const dnsServer = getDnsServerInfo(query.domainName);
-  const dnsResponseIndexes = await queryDnsParallel(
-    buildDnsQueryParameters(dnsServer.server.dnsList, query.protocolType),
-    query,
-    dnsResponses,
-    timeout,
-  );
+  const { responses: parallelResponses, indexes: dnsResponseIndexes } =
+    await queryDnsParallel(
+      buildDnsQueryParameters(dnsServer.server.dnsList, query.protocolType),
+      query,
+      timeout,
+    );
+  dnsResponses.splice(0, dnsResponses.length, ...parallelResponses);
   const dnsClientChoosed = dnsResponses[dnsResponseIndexes[0]];
   // Default use the original responseBuffer buffer
   if (dnsClientChoosed.responseBuffer) {
