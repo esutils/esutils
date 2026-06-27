@@ -121,6 +121,10 @@ test('queryDnsBuffer tcp round-trip', async () => {
   });
   const res = await result.promise;
   assert.ok(res instanceof Uint8Array);
+  const expected = Buffer.from(DnsAQueryGoogle);
+  expected[2] |= 0x80;
+  assert.equal(res.length, expected.length);
+  assert.deepEqual(Buffer.from(res), expected);
   assert.strictEqual(res[2] & 0x80, 0x80);
 
   await closeServer(server);

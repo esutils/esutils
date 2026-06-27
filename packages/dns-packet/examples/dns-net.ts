@@ -51,7 +51,7 @@ export function readStream(
         chunks[0] = Uint8Array.prototype.slice.call(chunks[0], 2);
       }
       if (chunklen >= 2 + expected) {
-        finish(Buffer.concat(chunks, chunklen));
+        finish(Buffer.concat(chunks, expected));
         done();
       }
     });
