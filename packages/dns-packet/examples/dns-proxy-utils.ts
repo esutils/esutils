@@ -124,6 +124,9 @@ export function dnsResponsesSort(dnsResponses: DnsResponse[]) {
       if (dnsResponseA.response && dnsResponseB.response) {
         const packetA = dnsResponseA.response;
         const packetB = dnsResponseB.response;
+        if (packetA.header.rcode !== packetB.header.rcode) {
+          return packetA.header.rcode - packetB.header.rcode;
+        }
         if (packetA.answers.length !== packetB.answers.length) {
           return packetB.answers.length - packetA.answers.length;
         }

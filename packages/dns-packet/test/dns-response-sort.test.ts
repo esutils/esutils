@@ -221,3 +221,118 @@ test('check sort dns clients [!responseBuffer,!responseBuffer,!responseBuffer]',
   ];
   assert.deepEqual(dnsResponsesSort(dnsResponses), [0, 1, 2]);
 });
+
+test('check sort dns clients [parsed NOTIMP, parsed NOERROR]', () => {
+  const parsedNotimp = Packet.create();
+  parsedNotimp.header.rcode = 4;
+  const parsedNoerror = Packet.create();
+  parsedNoerror.answers = Array.from({ length: 24 }, () => ({})) as DnsResource[];
+  const dnsResponses: DnsResponse[] = [
+    {
+      parameters: {
+        protocolType: 'tcp',
+        serverAddress: { ip: '208.67.222.222', port: 53 },
+      },
+      errors: [],
+      response: parsedNotimp,
+    },
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '8.8.8.8', port: 53 } },
+      errors: [],
+      response: parsedNoerror,
+    },
+  ];
+  assert.deepEqual(dnsResponsesSort(dnsResponses), [1, 0]);
+});
+
+test('check sort dns clients [parsed NOTIMP, parsed NOERROR empty]', () => {
+  const parsedNotimp = Packet.create();
+  parsedNotimp.header.rcode = 4;
+  const parsedNoerror = Packet.create();
+  const dnsResponses: DnsResponse[] = [
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '1.1.1.1', port: 53 } },
+      errors: [],
+      response: parsedNotimp,
+    },
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '8.8.8.8', port: 53 } },
+      errors: [],
+      response: parsedNoerror,
+    },
+  ];
+  assert.deepEqual(dnsResponsesSort(dnsResponses), [1, 0]);
+});
+
+test('check sort dns clients [parsed NOTIMP, parsed SERVFAIL]', () => {
+  const parsedNotimp = Packet.create();
+  parsedNotimp.header.rcode = 4;
+  const parsedServfail = Packet.create();
+  parsedServfail.header.rcode = 2;
+  const dnsResponses: DnsResponse[] = [
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '1.1.1.1', port: 53 } },
+      errors: [],
+      response: parsedNotimp,
+    },
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '8.8.8.8', port: 53 } },
+      errors: [],
+      response: parsedServfail,
+    },
+  ];
+  assert.deepEqual(dnsResponsesSort(dnsResponses), [1, 0]);
+});
+
+test('check sort dns clients [parsed NOTIMP many answers, parsed NOERROR few]', () => {
+  const parsedNotimp = Packet.create();
+  parsedNotimp.header.rcode = 4;
+  parsedNotimp.answers = Array.from({ length: 10 }, () => ({})) as DnsResource[];
+  const parsedNoerror = Packet.create();
+  parsedNoerror.answers = [{}] as DnsResource[];
+  const dnsResponses: DnsResponse[] = [
+    {
+      parameters: {
+        protocolType: 'tcp',
+        serverAddress: { ip: '208.67.222.222', port: 53 },
+      },
+      errors: [],
+      response: parsedNotimp,
+    },
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '8.8.8.8', port: 53 } },
+      errors: [],
+      response: parsedNoerror,
+    },
+  ];
+  assert.deepEqual(dnsResponsesSort(dnsResponses), [1, 0]);
+});
+
+test('check sort dns clients [parsed NOTIMP, parsed SERVFAIL, parsed NOERROR]', () => {
+  const parsedNotimp = Packet.create();
+  parsedNotimp.header.rcode = 4;
+  const parsedServfail = Packet.create();
+  parsedServfail.header.rcode = 2;
+  const parsedNoerror = Packet.create();
+  const dnsResponses: DnsResponse[] = [
+    {
+      parameters: {
+        protocolType: 'tcp',
+        serverAddress: { ip: '208.67.222.222', port: 53 },
+      },
+      errors: [],
+      response: parsedNotimp,
+    },
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '1.1.1.1', port: 53 } },
+      errors: [],
+      response: parsedServfail,
+    },
+    {
+      parameters: { protocolType: 'tcp', serverAddress: { ip: '8.8.8.8', port: 53 } },
+      errors: [],
+      response: parsedNoerror,
+    },
+  ];
+  assert.deepEqual(dnsResponsesSort(dnsResponses), [2, 1, 0]);
+});

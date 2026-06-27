@@ -56,10 +56,11 @@ export async function queryDns(
   const responseBufferOrError = await result.promise;
   if (responseBufferOrError instanceof Uint8Array) {
     dnsResponse.responseBuffer = responseBufferOrError;
-    const packet = Packet.decode(responseBufferOrError, textDecoder, dnsResponse.errors);
-    if (dnsResponse.errors.length === 0) {
-      dnsResponse.response = packet;
-    }
+    dnsResponse.response = Packet.decode(
+      responseBufferOrError,
+      textDecoder,
+      dnsResponse.errors,
+    );
   } else {
     dnsResponse.error = responseBufferOrError;
   }
@@ -159,6 +160,15 @@ export async function dnsFetchResponseBuffer(
     query.responseBuffer = dnsClientChoosed.responseBuffer;
   }
   if (!dnsClientChoosed.response) {
+    if (dnsClientChoosed.responseBuffer) {
+      const rcode =
+        (dnsClientChoosed.responseBuffer[2] << 8 |
+          dnsClientChoosed.responseBuffer[3]) &
+        0xf;
+      if (rcode === 0) {
+        return true;
+      }
+    }
     return false;
   }
 
