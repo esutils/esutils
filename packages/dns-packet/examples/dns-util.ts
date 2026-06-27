@@ -33,6 +33,19 @@ export interface DnsQuery {
 
 export interface DnsQueryState {
   aborts: (AbortFunction | undefined)[];
+  aborted: boolean;
+}
+
+export function abortDnsQueries(dnsQueryState: DnsQueryState) {
+  if (dnsQueryState.aborted) {
+    return;
+  }
+  dnsQueryState.aborted = true;
+  for (const abort of dnsQueryState.aborts) {
+    if (abort) {
+      abort();
+    }
+  }
 }
 
 export type DnsSendResponseBuffer = (responseBuffer: Uint8Array) => void;
@@ -77,6 +90,7 @@ export async function queryDnsParallel(
   }));
   const dnsQueryState: DnsQueryState = {
     aborts: new Array<AbortFunction>(queryParameters.length),
+    aborted: false,
   };
   const promises: Promise<void>[] = [];
   for (let i = 0; i < dnsResponses.length; i += 1) {
@@ -105,11 +119,7 @@ export async function queryDnsParallel(
     ) {
       // The total timeout deadline reached, abort them unconditionally
       // Or one of them have fetched the valid packet, means other dnsResponses can abort.
-      for (const abort of dnsQueryState.aborts) {
-        if (abort) {
-          abort();
-        }
-      }
+      abortDnsQueries(dnsQueryState);
     }
   }
   return { responses: dnsResponses, indexes: dnsResponseIndexes };

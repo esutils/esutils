@@ -100,7 +100,10 @@ beforeEach(() => {
 test('queryDns keeps partial decode response when decode errors occur', async () => {
   const responseBuffer = Buffer.from(GOOGLE_ANY_RESPONSE_HEX, 'hex');
   mockQueryDnsBufferResolved(responseBuffer);
-  const dnsQueryState = { aborts: [] as Array<(() => void) | undefined> };
+  const dnsQueryState = {
+    aborts: [] as Array<(() => void) | undefined>,
+    aborted: false,
+  };
   const dnsResponses: DnsResponse[] = [
     {
       parameters: {
