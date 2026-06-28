@@ -7,9 +7,11 @@
     "url": "git+https://github.com/esutils/esutils.git"
   },
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "tsc --build tsconfig.mjs.json",
     "build-workspaces": "yarn workspaces foreach -A -t run build",
+    "check": "tsc --noEmit --project tsconfig.json",
     "test-only": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.ts",
     "test": "yarn run build && yarn run test-only",
     "lint": "eslint .",
