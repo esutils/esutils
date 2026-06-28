@@ -5,6 +5,7 @@
   },
   "include": [
     "scripts/**/*.mjs",
+    "scripts/**/*.ts",
     "*.ts",
   ]
 }
