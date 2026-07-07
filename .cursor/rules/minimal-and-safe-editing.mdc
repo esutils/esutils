@@ -1,0 +1,299 @@
+---
+description: Minimal and safe editing (mase)
+alwaysApply: true
+---
+
+# Minimal and Safe Editing
+
+Also known as **mase**. `mase.mdc` is a shortcut for this rule
+(`minimal-and-safe-editing.mdc`). When the user says "mase", "@mase",
+"mase.mdc", or "sync mase rule", they mean this rule.
+
+Apply this to every text edit: source code, configs, docs, plans, rules,
+comments, chat replies, commits, and PRs. It covers scope, style, interfaces,
+contracts, encoding, and text fidelity.
+
+## Core principle
+
+Make only the changes the user explicitly requested in the current message;
+keep style stable and leave everything else byte-for-byte unchanged.
+
+## Procedure for every edit
+
+1. List the exact files and changes the request names.
+2. If a change is not on that list, do not make it; ask first.
+3. **Windows edit-tool gate:** before editing an existing tracked file, decide
+   the edit path (see "Windows edit-tool gate" below). On Windows, if the file
+   contains any non-ASCII byte, **do not use StrReplace or Write** on that file.
+4. Make the smallest diff that satisfies the request; touch only those regions.
+5. If your change breaks compile, test, or runtime, fix only that breakage, in
+   the smallest scope.
+6. Before sending, run the checks in "Validate before sending".
+
+- If the request is a question or review only, do not edit any file.
+- If the request is ambiguous or scope is unclear, stop and ask.
+- Debugging does not expand scope.
+
+## Edit in place (file order)
+
+When changing existing code, edit it where it already lives. Do not cut a
+function, type, or block from one place and paste it elsewhere in the same file,
+even if that seems more logical (e.g. next to a helper it calls).
+
+- Preserve declaration order: functions, types, exports, and top-level blocks
+  stay in their current positions unless the user asks to reorder.
+- To extend behavior, patch the existing function body and signature in place.
+  Add new types or helpers adjacent to their only caller only when there is no
+  existing symbol to extend.
+- Do not "rewrite from scratch" in a new location when an in-place edit suffices.
+- A good diff mostly shows `+`/`-` on contiguous lines. Treat as a failure:
+  deleting a whole function in one place and adding the same (or renamed) function
+  in another place without an explicit reorder request.
+
+Example (bad): move `runPackageList` above `runSinglePackage` because it calls
+`readPackageList` -- large move diff, same file order broken.
+Example (good): keep `runPackageList` at the bottom of the file; change only its
+parameter list and loop body.
+
+## Refactor or extract only when it clearly pays off
+
+An extraction or refactor the user did not ask for is worth it only when
+it removes a real duplication (total line count down) or makes the call
+site unambiguously more readable. Before extracting, count
+`helper body + signature + N call sites`; if not clearly less than the
+original, leave it inline. Prefer deleting a duplicate over wrapping it.
+When in doubt, leave the code as is.
+
+## Do not, unless explicitly requested
+
+- Refactor, rename, or move code.
+- Extract constants, helpers, or functions.
+- Reformat, reflow, reorder imports, or edit whitespace.
+- Change file encoding (charset, BOM, or code page) on any file you touch.
+- Change line endings (LF, CRLF, or CR) on any file you touch.
+- Edit comments that are not part of the requested change.
+- Change defaults, entry points, or control flow.
+- Replace a working approach with a different one.
+- Delete files, or add or remove dependencies or versions.
+- Change CI, env vars, or settings.
+- Add tests, docs, or new files.
+- On Windows, call **StrReplace** or **Write** on an **existing tracked file**
+  that contains any non-ASCII byte (see "Windows edit-tool gate").
+- Run `git reset --hard` or other destructive git commands that wipe work (see
+  "Git working tree safety").
+
+## No scratch files at repo root
+
+Do not create logs, captures, or debug dumps under the repository root. Put
+ephemeral agent files under `.cursor/tmp/` (e.g. `.cursor/tmp/logs/`,
+`.cursor/tmp/xemu-runs/`); keep that path in `.gitignore`. Redirect
+stdout/stderr from builds, xemu, or scripts to `.cursor/tmp/`, not root-level
+`out-*.txt` /
+`err-*.txt`. Root is for tracked files, standard build dirs (`build-debug/`,
+`build/`), or paths the user explicitly requests.
+
+## Interfaces and contracts
+
+Treat anything other code, scripts, or users depend on as a fixed contract:
+filenames, log names, package-list paths, redirect targets, exported names and
+function signatures, CLI flags and argument order, env var names, config and
+JSON/YAML keys, command strings, exit codes, and parseable log or output text.
+
+- Do not rename, reorder, or restructure a contract while making an unrelated
+  change.
+- Preserve existing command invocations verbatim. Example: do not swap a bulk
+  command for a loop, or change flags, unless the user asks.
+- To change a contract, stop and ask first, then update every caller and
+  consumer in the same change. These are not harmless refactors.
+
+## Encoding and text fidelity
+
+Applies to all text you write or edit: code, comments, docs, chat, commits, PRs.
+
+Encoding and line endings are part of the file contract. Treat them like
+function signatures: do not change them unless the user explicitly asks.
+
+### Windows edit-tool gate (mandatory)
+
+On Windows, agent **StrReplace** and **Write** can lossily re-encode UTF-8:
+multibyte sequences on **untouched** lines may become ASCII `?` (e.g. copyright
+symbol, accented `@author` names). The intended hunk may apply while unrelated
+lines corrupt. This is a known tool failure mode, not a source-file bug.
+
+**Before editing an existing tracked file on Windows:**
+
+1. Scan for non-ASCII: `python -c "import sys; d=open(sys.argv[1],'rb').read(); sys.exit(0 if all(b<128 for b in d) else 1)" -- <path>`
+   or equivalent byte read. Any byte `>= 0x80` means the file is **encoding-sensitive**.
+2. If encoding-sensitive: **forbidden tools** on that file are **StrReplace**
+   and **Write**. Use a byte-safe path instead:
+   - Python read/write in `rb` mode: replace only exact ASCII byte sequences
+     for the intended hunk; leave all other bytes untouched.
+   - Or restore corrupted lines from `git show HEAD:<path>` after a bad edit
+     (byte copy, never retype the symbol).
+3. If the file is ASCII-only on disk, StrReplace is allowed for small in-place
+   hunks. Still verify `git diff` before sending.
+
+**Never** "fix" encoding corruption by retyping the character in StrReplace.
+Copy exact line bytes from git instead.
+
+**After any edit** to an encoding-sensitive file, run `git diff -- <path>` and
+confirm no unchanged line with non-ASCII bytes changed. If `?` replaced prior
+UTF-8 on untouched lines, restore from git and re-apply with Python `rb` only.
+
+### General encoding rules
+
+- Preserve original file encoding and line endings on every edit, for every file
+  type (source, config, YAML, JSON, Markdown, shell, rules, etc.).
+- Do not change charset or encoding of an existing file: no UTF-8 to UTF-16,
+  no UTF-16 to UTF-8, no Latin-1/GBK/other code-page conversion, and no
+  adding or removing a UTF-8 BOM unless the user explicitly asks.
+- Do not convert LF to CRLF or CRLF to LF on existing files. Unchanged lines
+  must keep the same line-ending bytes as before the edit.
+- Match the file's existing line-ending style on new lines you add. If the file
+  uses LF, write LF; if CRLF, write CRLF. Do not "normalize" endings unless
+  the user explicitly asks.
+- Prefer in-place edits (patch a few lines) over rewriting or re-copying a whole
+  file. Full-file writes and OS copy commands often change encoding and line
+  endings on Windows; avoid them when updating an existing tracked file.
+- On existing tracked files, use targeted patch edits on the changed region, not
+  whole-file overwrite. If a tool would rewrite the entire file, choose a
+  narrower edit path instead.
+- Never rewrite or re-encode untouched text, including non-ASCII text (e.g. GBK,
+  UTF-8 comments, copyright or bullet symbols). Unchanged non-ASCII bytes must
+  remain byte-for-byte identical in the diff.
+- On new or modified lines, use ASCII punctuation only. Do not introduce smart
+  quotes, em or en dash, ellipsis char, full-width punctuation, Unicode bullets,
+  or non-ASCII arrows.
+- Do not change or normalize punctuation in existing text unless asked.
+- Do not make style-only punctuation edits in comments, docs, or strings.
+- If you detect encoding corruption, restore the original characters from the
+  base content; do not "fix" it by normalizing punctuation.
+- Do not reflow or wrap untouched lines. Wrap only a line you functionally edit,
+  and only when it aids correctness or local readability, or when asked.
+- Use UTF-8 encoding by default (no BOM preferred) for all text: source code,
+  configs, docs, plans, rules, shell scripts, commits, and PRs.
+
+## Planning and execution
+
+- If the user asks for a direct fix, implement it. Do not substitute a long plan
+  or multi-option review unless they asked for planning.
+- Do not switch to Plan mode or broaden the task with extra refactors,
+  follow-ups, or optional improvements unless asked or scope is unclear.
+- Do not start long builds, installs, or full test suites unless asked, or to
+  run a minimal check that verifies your requested change.
+
+## Plans and docs
+
+When writing or editing plans, docs, comments, architecture guides, or operator
+guides:
+
+- Do not use numbered phase IDs or step IDs (`Phase 1`, `Phase 2`, `Step 1`,
+  `Step 2`, and so on). Numbered labels churn when order changes and do not
+  name what the piece does.
+- Name stages, workflows, and doc files with descriptive slugs (kebab-case
+  words that say what the piece does).
+- Prefer one slug-named doc per major stage when detail warrants it, plus a
+  README or index that links them.
+- In prose and comments, refer to stages by slug name (`widget-init`, not
+  "phase 1"). Use tables and cross-links between slug-named docs instead of a
+  single numbered checklist.
+
+Example (good):
+
+```markdown
+# Widget pipeline
+
+**Start here.** Index and architecture. Edit this file first when stages or
+operator flows change.
+
+| Doc | Role |
+|-----|------|
+| `README.md` | Index and pipeline overview |
+| `widget-init.md` | Bootstrap local checkouts |
+| `widget-sync.md` | Fast-forward content from upstream |
+| `widget-merge.md` | Replay into destination |
+
+**Pipeline:** config -> **widget-init** -> **widget-sync** -> **widget-merge**.
+
+## Operator flows
+
+| Scenario | widget-init / widget-sync | widget-merge |
+|----------|---------------------------|--------------|
+| Local init only | `yarn widget-init` | -- |
+| Full refresh | `yarn widget-init --push` -> widget-sync | widget-merge CI or `yarn widget-merge` |
+```
+
+Example (bad): `Phase 1: init`, `Step 2: sync`, `docs/plan-phase-3.md`.
+
+## Git working tree safety
+
+Never run `git reset --hard` in agent shells or scripts. It discards uncommitted
+work and can drop branch tips with no recovery path the user expects.
+
+When a clean working tree or index is needed (for example before `git am`):
+
+1. Always use the system-provided `git` executable for Git operations; on
+   Windows, use Windows Git from `ProgramFiles`; if unavailable, stop and ask
+   the user to install it.
+2. Inspect scope first: `git status --porcelain`.
+3. Stash instead of reset:
+   - Few files: `git stash push -m "<reason>" -- <paths...>`
+   - Many paths: `git stash push -m "<reason>"` (whole tree)
+4. If more than **20** paths would be stashed, stop and ask the user how to
+   proceed (stash all, stash a subset, commit first, or abort).
+5. After the operation, restore with `git stash pop` (or `git stash apply` when
+   pop risk is high) and confirm `git status`.
+
+Do not use `git reset --hard` even to undo a failed test or clean up after a
+mistake. Prefer `git stash`, targeted `git restore`, or ask the user.
+
+Only use destructive git recovery (`reset --hard`, `clean -fdx`, etc.) when the
+user explicitly requests it in the current message.
+
+## Commits and pull requests (only when asked)
+
+- Stage only files that belong to the requested change; do not bundle unrelated
+  work.
+- Commit title: read recent `git log` and match this repo's title style only
+  (short summary; accurate verbs: add, fix, update, remove).
+- Commit body: always include a detailed `- ` bullet list of what changed.
+  Wrap body lines at 80 columns.
+- When amending, keep the title format; update the title only if the change
+  scope warrants it. Always rewrite the body as a fresh detailed `- ` bullet
+  list of what is in the commit, wrapped at 80 columns.
+- PR title: short summary. PR body: `- ` bullets for Summary and Test plan;
+  complete sentences; ASCII punctuation only.
+
+## Formatting for new prose
+
+- Line width: follow `.editorconfig`, then workspace or Cursor settings; else
+  aim for commit/PR text and comments around 80 characters. This is a soft
+  guide, not a hard limit; overflow when wrapping would hurt readability.
+- Use `- ` bullets in commit/PR bodies.
+
+## Validate before sending
+
+Before sending a reply or creating a commit or PR:
+
+- Re-scan the diff and drafted text for mojibake, replacement characters, and
+  non-ASCII punctuation on new or modified lines.
+- Confirm every changed region maps to something the user requested.
+- Scan `git diff` for move/reorder noise: the same symbol removed in one hunk
+  and re-added elsewhere, import blocks shuffled, or whole functions relocated.
+  If found, undo the move and apply an in-place edit instead.
+- Scan `git diff` for line-ending churn: every line deleted and re-added with
+  the same text (large +N/-N with no real content change). If found, restore
+  the file's original line endings and re-apply only the intended content edits.
+- Scan `git diff` for encoding churn: whole-file rewrites, mojibake on formerly
+  correct non-ASCII (e.g. copyright symbols), replacement characters, or
+  BOM added/removed. If found, restore the file from git and re-apply only the
+  intended in-place content edits without re-encoding.
+- **Windows:** if you edited an existing tracked file, confirm you ran the
+  edit-tool gate (non-ASCII scan). If the file was encoding-sensitive, confirm
+  you did **not** use StrReplace or Write. If `git diff` shows `?` where UTF-8
+  bytes were before on untouched lines, restore from `git show HEAD:<path>` and
+  re-apply with Python `rb` only.
+- When the diff touches TypeScript or JavaScript files (`*.ts`, `*.tsx`,
+  `*.js`, `*.jsx`, `*.mjs`, or `*.cjs`), run `yarn check` and fix any
+  TypeScript errors before sending.
+- If anything fails, fix or restore it before sending.

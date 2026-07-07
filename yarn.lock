@@ -658,6 +658,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@esutils/mase@workspace:packages/mase":
+  version: 0.0.0-use.local
+  resolution: "@esutils/mase@workspace:packages/mase"
+  dependencies:
+    chardet: "npm:^2.1.0"
+  bin:
+    mase: ./dist/cli.mjs
+  languageName: unknown
+  linkType: soft
+
 "@esutils/mqtt-client@workspace:packages/mqtt-client":
   version: 0.0.0-use.local
   resolution: "@esutils/mqtt-client@workspace:packages/mqtt-client"
@@ -1881,6 +1891,13 @@ __metadata:
   version: 1.0.2
   resolution: "char-regex@npm:1.0.2"
   checksum: 10c0/57a09a86371331e0be35d9083ba429e86c4f4648ecbe27455dbfb343037c16ee6fdc7f6b61f433a57cc5ded5561d71c56a150e018f40c2ffb7bc93a26dae341e
+  languageName: node
+  linkType: hard
+
+"chardet@npm:^2.1.0":
+  version: 2.2.0
+  resolution: "chardet@npm:2.2.0"
+  checksum: 10c0/8d43a1dd3ce535aa070d04139fae62f879b4388394eb1d857364ce416675a1f0f63974fba8208e9cd11b49e1a6da3e65ea6393d0fc654a8c4217c0d74c16b1b4
   languageName: node
   linkType: hard
 

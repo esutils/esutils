@@ -21,6 +21,9 @@
       "path": "./packages/empty/tsconfig.mjs.json"
     },
     {
+      "path": "./packages/mase/tsconfig.mjs.json"
+    },
+    {
       "path": "./packages/mqtt-packet/tsconfig.mjs.json"
     },
     {

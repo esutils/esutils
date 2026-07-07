@@ -1,0 +1,47 @@
+{
+  "name": "@esutils/mase",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/esutils/esutils.git"
+  },
+  "description": "CLI guard for AI-generated text, UTF-8, mojibake, and ASCII punctuation",
+  "keywords": [
+    "ai",
+    "ai-generated",
+    "ascii",
+    "checker",
+    "cli",
+    "cursor",
+    "cursor-rules",
+    "editorconfig",
+    "encoding",
+    "global-cli",
+    "lint",
+    "minimal-safe-editing",
+    "mojibake",
+    "normalization",
+    "punctuation",
+    "smart-quotes",
+    "typescript",
+    "utf-8"
+  ],
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "yarn run -T tsc -p tsconfig.mjs.json",
+    "check": "node dist/cli.mjs --check",
+    "write": "node dist/cli.mjs --write",
+    "prepublishOnly": "yarn run build",
+    "test": "yarn run build && node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.ts"
+  },
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "main": "./dist/index.mjs",
+  "bin": "./dist/cli.mjs",
+  "dependencies": {
+    "chardet": "^2.1.0"
+  }
+}

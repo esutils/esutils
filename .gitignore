@@ -3,3 +3,7 @@ node_modules
 yarn-error.log
 dist-*
 .yarn
+*.tsbuildinfo
+*.tgz
+dist-dns-packet.sh
+sync-mase.json
