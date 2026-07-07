@@ -25,6 +25,31 @@ This project pins `"packageManager": "yarn@4.17.0"` in `package.json`. Corepack
 installs and runs that Yarn version automatically; do not rely on global Yarn
 1.x.
 
+### Safe yarn install
+
+If `yarn build` fails with `Cannot find module '@esutils/...'`, workspace symlinks
+under `node_modules/@esutils/` may be broken (empty folders instead of links to
+`packages/*`). The repo uses [`rimraf`](https://www.npmjs.com/package/rimraf) as a
+devDependency so removal works the same on Windows, Linux, and macOS (no global
+install needed):
+
+```shell
+yarn install:safe
+```
+
+That runs `yarn rmdir:esutils`, then `yarn install`, then `yarn build`.
+
+To remove only the broken links:
+
+```shell
+yarn rmdir:esutils
+yarn install
+```
+
+Verify links: each `node_modules/@esutils/<name>` entry should point at
+`packages/<name>` and contain a `package.json` (for example
+`node_modules/@esutils/invert/package.json`).
+
 ## Scripts
 
 From the repo root:
@@ -37,6 +62,7 @@ yarn watch
 ```
 
 - `build` - compile all workspace packages with `tsc --build`
+- `install:safe` - remove broken `node_modules/@esutils` links, reinstall, build
 - `test` - build, then run Jest across the monorepo
 - `lint` - TypeScript project check via Vite and `vite-plugin-checker`
 - `watch` - incremental TypeScript rebuild

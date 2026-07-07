@@ -16,6 +16,8 @@
     "test": "yarn run build && yarn run test-only",
     "lint": "vite build",
     "pack": "yarn workspace @esutils/dns-packet run vite",
+    "rmdir:esutils": "rimraf node_modules/@esutils",
+    "install:safe": "yarn rmdir:esutils && yarn install && yarn build",
     "watch": " tsc --build --watch tsconfig.mjs.json"
   },
   "workspaces": [
@@ -25,6 +27,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^26.0.1",
     "jest": "^30.4.2",
+    "rimraf": "^6.1.3",
     "ts-jest": "^29.4.11",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
