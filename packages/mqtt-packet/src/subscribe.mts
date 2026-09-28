@@ -48,13 +48,13 @@ export default {
     }
     const subscriptionsStart = idStart + 2;
     const subscriptions: ISubscription[] = [];
-    for (let i = subscriptionsStart; i < buffer.length;) {
+    for (let i = subscriptionsStart; i < remainingLength;) {
       const topicFilter = decodeUTF8String(buffer, i, utf8Decoder);
       if (topicFilter === undefined) {
         throw new Error('Cannot parse topic');
       }
       i += topicFilter.length;
-      if (i >= buffer.length) {
+      if (i >= remainingLength) {
         throw new Error('Malformed Subscribe Payload');
       }
       const options = buffer[i];

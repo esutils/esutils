@@ -49,7 +49,7 @@ export default {
     const topicFiltersStart = idStart + 2;
     const topicFilters: string[] = [];
 
-    for (let i = topicFiltersStart; i < buffer.length;) {
+    for (let i = topicFiltersStart; i < remainingLength;) {
       const topicFilter = decodeUTF8String(buffer, i, utf8Decoder);
       if (topicFilter === undefined) {
         throw new Error('Cannot parse topic');

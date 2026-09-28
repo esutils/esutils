@@ -31,8 +31,10 @@ export default {
       throw new Error('Malformed suback, no payload specified');
     }
 
-    for (let i = payloadStart; i < buffer.length; i += 1) {
-      const returnCode = buffer[i];
+    /* remainingLength = 2 字节 messageId + N 个 return code，据此限定边界避免越界到粘包字节 */
+    const returnCodesCount = remainingLength - 2;
+    for (let i = 0; i < returnCodesCount; i += 1) {
+      const returnCode = buffer[payloadStart + i];
       /*
        For MQTT 3.1.1
        Allowed return codes:
