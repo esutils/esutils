@@ -26,6 +26,8 @@ export class Client extends BaseClient {
 
   private socketState?:'connecting' | 'connected' | 'failed';
 
+  private cancelOpen?: () => void;
+
   protected validateURL(url: URL) {
     // TODO: add mqtts
     if (url.protocol !== 'mqtt:') {
@@ -34,22 +36,42 @@ export class Client extends BaseClient {
   }
 
   protected async open(url: URL) {
+    await this.close();
     this.socketState = 'connecting';
 
     return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        if (this.cancelOpen === cancel) this.cancelOpen = undefined;
+        if (error) reject(error);
+        else resolve();
+      };
+      const cancel = () => finish(new Error('TCP connect cancelled'));
+      this.cancelOpen = cancel;
       const socket = net.connect(
         {
           host: url.hostname,
           port: Number(url.port),
         },
         () => {
+          if (this.socket !== socket) return;
           this.socketState = 'connected';
 
-          resolve();
+          finish();
         },
       );
 
       this.socket = socket;
+      timer = setTimeout(() => {
+        if (settled || this.socket !== socket) return;
+        finish(new Error('TCP connect timeout'));
+        this.socket = undefined;
+        socket.destroy();
+      }, this.connectTimeout);
 
       // From the Node.js documentation:
       //
@@ -63,18 +85,23 @@ export class Client extends BaseClient {
       // https://nodejs.org/dist/latest-v12.x/docs/api/net.html#net_socket_connect
 
       socket.on('error', (err: Error) => {
+        if (this.socket !== socket) return;
         if (this.socketState === 'connecting') {
           this.socketState = 'failed';
 
-          reject(err);
+          finish(err);
         }
       });
 
-      socket.on('end', () => {
+      socket.on('close', () => {
+        if (this.socket !== socket) return;
+        finish(new Error('TCP closed before connect'));
+        this.socket = undefined;
         this.connectionClosed();
       });
 
       socket.on('data', (bytes: Uint8Array) => {
+        if (this.socket !== socket) return;
         this.bytesReceived(bytes);
       });
     });
@@ -89,7 +116,7 @@ export class Client extends BaseClient {
 
     this.log('writing bytes', bytes);
 
-    return new Promise<void>((resolve, _) => {
+    return new Promise<void>((resolve, reject) => {
       // From the Node.js documentation:
       //
       // The writable.write() method writes some data to the stream, and calls
@@ -103,24 +130,18 @@ export class Client extends BaseClient {
       // We already add a listener for error events when the connection is opened.
 
       socket.write(bytes, (err?: Error) => {
-        if (!err) {
-          resolve();
-        }
+        if (err) reject(err);
+        else resolve();
       });
     });
   }
 
   protected async close() {
-    if (!this.socket) {
-      throw new Error('no connection');
-    }
-
-    // Afer this method gets called, the listener for the end event added in the
-    // open method will get called.
-    this.socket.end();
-
+    const socket = this.socket;
     this.socket = undefined;
-    await Promise.resolve();
+    this.cancelOpen?.();
+    // Detach ownership before destroying; late events cannot affect a new socket.
+    socket?.destroy();
   }
 }
 

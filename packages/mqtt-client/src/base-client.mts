@@ -58,6 +58,8 @@ export interface BaseClientOptions {
   password?: Uint8Array;
   connectTimeout?: number;
   pingrespTimeout?: number;
+  /** Maximum wait for SUBACK before reconnecting (milliseconds). */
+  subscribeTimeout?: number;
   connect?: Partial<BaseConnectOptions>;
   reconnect?: Partial<BaseConnectOptions>;
   incomingStore?: IncomingStore;
@@ -73,6 +75,7 @@ export type SubscriptionState =
 | 'replaced'
 | 'unacknowledged'
 | 'acknowledged'
+| 'rejected'
 | 'unsubscribe-pending'
 | 'unsubscribe-unacknowledged'
 | 'unsubscribe-acknowledged';
@@ -263,6 +266,7 @@ export abstract class BaseClient {
   number,
   {
     subscriptions: Subscription[];
+    deadline: number;
   }
   >();
 
@@ -501,9 +505,20 @@ export abstract class BaseClient {
       promises.push(deferred.promise.then(() => sub));
     }
 
-    await this.flushSubscriptions();
+    // Observe every waiter before writing: SUBACK can arrive synchronously.
+    const result = Promise.all(promises);
+    void result.catch(() => {});
+    try {
+      await this.flushSubscriptions();
+    } catch (error) {
+      this.subscriptionFailed(new Error('SUBSCRIBE write failed'));
+    }
+    return result;
+  }
 
-    return Promise.all(promises);
+  /** Read-only state for coordinating application retries with automatic recovery. */
+  public getSubscriptionState(topic: string): SubscriptionState | undefined {
+    return this.subscriptions.find(sub => sub.topic === topic)?.state;
   }
 
   protected async flushSubscriptions() {
@@ -526,14 +541,13 @@ export abstract class BaseClient {
 
     this.unacknowledgedSubscribes.set(subscribePacket.messageId, {
       subscriptions,
+      deadline: Date.now() + (this.options.subscribeTimeout ?? this.connectTimeout),
     });
-
+    this.scheduleSubscriptionTimeout();
+    // Set state before writing: a synchronous transport may deliver SUBACK.
+    for (const sub of subscriptions) sub.state = 'unacknowledged';
     await this.send(subscribePacket);
 
-    for (let i = 0; i < subscriptions.length; i += 1) {
-      const sub = subscriptions[i];
-      sub.state = 'unacknowledged';
-    }
   }
 
   public async unsubscribe(topic: string): Promise<Subscription[]>;
@@ -683,8 +697,14 @@ export abstract class BaseClient {
   private async doDisconnect() {
     this.changeState('disconnecting');
     this.stopTimers();
-    await this.send({ cmd: 'disconnect' });
-    await this.close();
+    try {
+      await this.send({ cmd: 'disconnect' });
+    } finally {
+      try { await this.close(); }
+      finally {
+        if (this.connectionState === 'disconnecting') this.changeState('disconnected');
+      }
+    }
   }
 
   // Methods implemented by subclasses
@@ -703,7 +723,7 @@ export abstract class BaseClient {
 
   protected openConnectionInit() {
     this.buffer = undefined;
-    this.unacknowledgedSubscribes.clear();
+    this.abandonSubscriptions(new Error('MQTT connection replaced'));
     this.unacknowledgedUnsubscribes.clear();
   }
 
@@ -745,6 +765,7 @@ export abstract class BaseClient {
     if (this.options.clean !== false || !connackPacket.sessionPresent) {
       for (let i = 0; i < this.subscriptions.length; i += 1) {
         const sub = this.subscriptions[i];
+        if (sub.state === 'rejected') continue;
         if (sub.state === 'unsubscribe-pending') {
           sub.state = 'removed';
         } else {
@@ -768,6 +789,7 @@ export abstract class BaseClient {
   // This gets called by subclasses when the connection is unexpectedly closed.
   protected connectionClosed() {
     this.log('connectionClosed');
+    this.abandonSubscriptions(new Error('MQTT connection closed'));
 
     switch (this.connectionState) {
       case 'disconnecting':
@@ -979,38 +1001,87 @@ export abstract class BaseClient {
     }
   }
 
+  private scheduleSubscriptionTimeout() {
+    this.stopTimer('subscribe');
+    let deadline = Infinity;
+    for (const request of this.unacknowledgedSubscribes.values()) {
+      deadline = Math.min(deadline, request.deadline);
+    }
+    if (deadline !== Infinity) {
+      this.startTimer('subscribe', () => {
+        this.subscriptionFailed(new Error('SUBACK timeout'));
+      }, Math.max(0, deadline - Date.now()));
+    }
+  }
+
+  private abandonSubscriptions(error: Error) {
+    this.stopTimer('subscribe');
+    for (const request of this.unacknowledgedSubscribes.values()) {
+      for (const sub of request.subscriptions) {
+        sub.state = 'pending';
+        const deferred = this.unresolvedSubscribes.get(sub.topic);
+        if (deferred) {
+          this.unresolvedSubscribes.delete(sub.topic);
+          deferred.reject(error);
+        }
+      }
+    }
+    this.unacknowledgedSubscribes.clear();
+  }
+
+  private subscriptionFailed(error: Error) {
+    const topics: string[] = [];
+    for (const request of this.unacknowledgedSubscribes.values()) {
+      for (const sub of request.subscriptions) topics.push(sub.topic);
+    }
+    this.abandonSubscriptions(error);
+    if (topics.length) this.emit('subscriptionRecovery', topics);
+
+    if (this.connectionState !== 'connected') return;
+    this.log(error.message);
+    this.stopTimers();
+    this.changeState('offline');
+    void this.close().catch(reason => this.log('subscription close failed', reason))
+      .then(() => {
+        if (this.connectionState === 'offline') this.startReconnectTimer();
+      });
+  }
+
   protected handleSuback(packet: ISubackPacket) {
     const unackSubs = this.unacknowledgedSubscribes.get(
       packet.messageId,
     );
 
-    if (unackSubs === undefined) {
-      throw new Error(
-        `received suback packet with unrecognized id ${packet.messageId}`,
-      );
+    if (this.connectionState !== 'connected' || unackSubs === undefined) {
+      this.log('ignoring stale SUBACK');
+      return;
     }
-    this.unacknowledgedSubscribes.delete(packet.messageId);
 
     // verify returnCodes length matches subscriptions.length
     if (unackSubs.subscriptions.length !== packet.granted.length) {
-      throw new Error(
-        `received suback packet returnCodes length:${packet.granted.length} !== ${unackSubs.subscriptions.length}`,
-      );
+      this.subscriptionFailed(new Error('SUBACK return-code count mismatch'));
+      return;
     }
+    this.unacknowledgedSubscribes.delete(packet.messageId);
     for (let i = 0; i < unackSubs.subscriptions.length; i += 1) {
       const sub = unackSubs.subscriptions[i];
-      sub.state = 'acknowledged';
       sub.granted = packet.granted[i];
-      i += 1;
+      sub.state = sub.granted <= 2 ? 'acknowledged' : 'rejected';
 
       const deferred = this.unresolvedSubscribes.get(sub.topic);
 
       if (deferred) {
         this.unresolvedSubscribes.delete(sub.topic);
 
-        deferred.resolve(packet);
+        if (sub.state === 'rejected') deferred.reject(new Error('SUBACK subscription rejected'));
+        else deferred.resolve(packet);
       }
     }
+    this.scheduleSubscriptionTimeout();
+    const accepted = unackSubs.subscriptions.filter(sub => sub.state === 'acknowledged').map(sub => sub.topic);
+    const rejected = unackSubs.subscriptions.filter(sub => sub.state === 'rejected').map(sub => sub.topic);
+    if (accepted.length) this.emit('subscribed', accepted);
+    if (rejected.length) this.emit('subscriptionRejected', rejected);
   }
 
   protected handleUnsuback(packet: IUnsubackPacket) {
@@ -1217,6 +1288,7 @@ export abstract class BaseClient {
   }
 
   protected stopTimers() {
+    this.abandonSubscriptions(new Error('MQTT operation stopped'));
     this.stopConnectTimer();
     this.stopReconnectTimer();
     this.stopKeepaliveTimer();
