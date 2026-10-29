@@ -24,6 +24,7 @@ export function decodeLength(buffer: Uint8Array, startIndex: number) {
   let multiplier = 1;
 
   do {
+    if (i >= buffer.length) return undefined;
     encodedByte = buffer[i];
     i += 1;
 
@@ -33,6 +34,7 @@ export function decodeLength(buffer: Uint8Array, startIndex: number) {
       throw Error('malformed length');
     }
 
+    if (i - startIndex === 4 && (encodedByte & 128)) throw Error('malformed length');
     multiplier *= 128;
   } while ((encodedByte & 128) !== 0);
 

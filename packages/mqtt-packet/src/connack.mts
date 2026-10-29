@@ -21,8 +21,8 @@ export default {
     _utf8Decoder: UTF8Decoder,
     _opts: PacketOptions,
   ): IConnackPacket | undefined {
-    if (remainingLength < 2) {
-      return undefined;
+    if (remainingLength !== 2 || buffer.length < 2) {
+      throw new Error('Malformed connack length');
     }
     if (buffer[0] & 0xfe) {
       throw new Error('Invalid connack flags, bits 7-1 must be set to 0');

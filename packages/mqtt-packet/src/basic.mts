@@ -176,6 +176,7 @@ export function decodeUint8Array(
     return undefined;
   }
   const length = (buffer[startIndex] << 8) + buffer[startIndex + 1];
+  if (startIndex + 2 + length > buffer.length) return undefined;
   const bytes = buffer.subarray(startIndex + 2, startIndex + 2 + length);
   return bytes;
 }

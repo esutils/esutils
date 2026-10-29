@@ -92,7 +92,7 @@ export default {
       utf8Decoder,
     );
     if (protocolIdString === undefined) {
-      throw new Error('Cannot parse protocolId');
+      throw new Error('Invalid protocol id: Cannot parse protocolId');
     }
     const protocolId = checkProtocolId(protocolIdString.value);
     const protocolLevelIndex = protocolNameStart + protocolIdString.length;

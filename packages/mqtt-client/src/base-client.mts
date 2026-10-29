@@ -65,6 +65,8 @@ export interface BaseClientOptions {
   incomingStore?: IncomingStore;
   outgoingStore?: OutgoingStore;
   maxPublishQueue?: number;
+  /** Maximum complete inbound MQTT packet, including its fixed header. */
+  maxPacketSize?: number;
   logger?: (msg: string, ...args: unknown[]) => void;
 }
 
@@ -237,6 +239,16 @@ export abstract class BaseClient {
 
   private buffer?: Uint8Array;
 
+  private bufferLength = 0;
+
+  private connectionEpoch = 0;
+
+  private connectionBlocked = false;
+
+  private expectedPacketLength = 0;
+
+  private readonly maxPacketSize: number;
+
   private unresolvedConnect?: Deferred<IConnackPacket>;
 
   private queuedPublishes: {
@@ -287,6 +299,10 @@ export abstract class BaseClient {
 
   public constructor(options: BaseClientOptions) {
     this.options = options;
+    this.maxPacketSize = options.maxPacketSize ?? 128 * 1024;
+    if (!Number.isInteger(this.maxPacketSize) || this.maxPacketSize < 2 || this.maxPacketSize > 268435460) {
+      throw new Error('Invalid MQTT maximum packet size');
+    }
     this.protocolVersion = this.options.protocolVersion;
     this.utf8Encoder = this.options.utf8Encoder;
     this.utf8Decoder = this.options.utf8Decoder;
@@ -320,6 +336,7 @@ export abstract class BaseClient {
     }
 
     this.disconnectRequested = false;
+    this.connectionBlocked = false;
 
     const deferred = new Deferred<IConnackPacket>();
 
@@ -484,24 +501,33 @@ export abstract class BaseClient {
         state: 'pending',
       }
       : { topic: sub, qos: qos || 0, state: 'pending' }));
+    // Do not replace an in-flight topic: its SUBACK belongs to that request.
+    // Same-QoS callers share one waiter; a conflicting QoS must wait/retry.
+    const requestedQos = new Map<string, QoS>();
+    for (const sub of subs) {
+      const existing = this.subscriptions.find(old => old.topic === sub.topic);
+      const inFlight = existing && (existing.state === 'pending' || existing.state === 'unacknowledged');
+      if ((inFlight && existing.qos !== sub.qos) ||
+          (requestedQos.has(sub.topic) && requestedQos.get(sub.topic) !== sub.qos)) {
+        throw new Error('Subscription already in progress with different QoS');
+      }
+      requestedQos.set(sub.topic, sub.qos);
+    }
     const promises = [];
-
     for (let i = 0; i < subs.length; i += 1) {
-      const sub = subs[i];
-      // Replace any matching subscription so we don't resubscribe to it
-      // multiple times on reconnect. This matches what the broker is supposed
-      // to do when it receives a subscribe packet containing a topic filter
-      // matching an existing subscription.
-      this.subscriptions = this.subscriptions.filter(
-        (old) => old.topic !== sub.topic,
-      );
-
-      this.subscriptions.push(sub);
-
-      const deferred = new Deferred<ISubackPacket | undefined>();
-
-      this.unresolvedSubscribes.set(sub.topic, deferred);
-
+      let sub = subs[i];
+      const existing = this.subscriptions.find(old => old.topic === sub.topic);
+      if (existing && (existing.state === 'pending' || existing.state === 'unacknowledged')) {
+        sub = existing;
+      } else {
+        this.subscriptions = this.subscriptions.filter(old => old.topic !== sub.topic);
+        this.subscriptions.push(sub);
+      }
+      let deferred = this.unresolvedSubscribes.get(sub.topic);
+      if (!deferred) {
+        deferred = new Deferred<ISubackPacket | undefined>();
+        this.unresolvedSubscribes.set(sub.topic, deferred);
+      }
       promises.push(deferred.promise.then(() => sub));
     }
 
@@ -722,13 +748,15 @@ export abstract class BaseClient {
   }
 
   protected openConnectionInit() {
-    this.buffer = undefined;
+    this.connectionEpoch++;
+    this.resetReceiveBuffer();
     this.abandonSubscriptions(new Error('MQTT connection replaced'));
     this.unacknowledgedUnsubscribes.clear();
   }
 
   // This gets called from connect and when reconnecting.
   protected async openConnection() {
+    if (this.connectionBlocked) return;
     try {
       this.changeState('connecting');
 
@@ -747,8 +775,9 @@ export abstract class BaseClient {
         keepalive: this.keepalive,
       });
 
-      this.startConnectTimer();
+      if (this.connectionState === 'connecting') this.startConnectTimer();
     } catch (err) {
+      if (this.connectionBlocked) return;
       const error = err as Error;
       this.log(`caught error opening connection: ${error.message}`);
 
@@ -788,7 +817,9 @@ export abstract class BaseClient {
 
   // This gets called by subclasses when the connection is unexpectedly closed.
   protected connectionClosed() {
+    if (this.connectionBlocked) return;
     this.log('connectionClosed');
+    this.resetReceiveBuffer();
     this.abandonSubscriptions(new Error('MQTT connection closed'));
 
     switch (this.connectionState) {
@@ -805,56 +836,68 @@ export abstract class BaseClient {
     this.stopKeepaliveTimer();
   }
 
+  private resetReceiveBuffer() {
+    this.buffer = undefined;
+    this.bufferLength = 0;
+    this.expectedPacketLength = 0;
+  }
+
   protected bytesReceived(bytes: Uint8Array) {
-    let buffer: Uint8Array | undefined;
-    const oldBuffer = this.buffer;
-    if (bytes.length > 0) {
-      this.stopWaitDataTimer();
-    }
-    if (oldBuffer) {
-      const newBuffer = new Uint8Array(oldBuffer.length + bytes.length);
+    if (bytes.length > 0) this.stopWaitDataTimer();
+    let offset = 0;
+    try {
+      while (offset < bytes.length) {
+        // Accumulate at most five header bytes before allocating the body.
+        if (!this.buffer) this.buffer = new Uint8Array(Math.min(5, this.maxPacketSize));
+        while (!this.expectedPacketLength && offset < bytes.length) {
+          if (this.bufferLength >= this.buffer.length) throw new Error('MQTT packet size or length invalid');
+          const byte = bytes[offset++];
+          this.buffer[this.bufferLength++] = byte;
+          if (this.bufferLength < 2) continue;
+          if (byte & 128) {
+            if (this.bufferLength === 5) throw new Error('Malformed MQTT remaining length');
+            continue;
+          }
+          let remainingLength = 0;
+          let multiplier = 1;
+          for (let i = 1; i < this.bufferLength; i++) {
+            remainingLength += (this.buffer[i] & 127) * multiplier;
+            multiplier *= 128;
+          }
+          const packetLength = this.bufferLength + remainingLength;
+          if (packetLength > this.maxPacketSize) throw new Error('MQTT packet size exceeds limit');
+          this.expectedPacketLength = packetLength;
+          if (packetLength > this.buffer.length) {
+            const packetBuffer = new Uint8Array(packetLength);
+            packetBuffer.set(this.buffer.subarray(0, this.bufferLength));
+            this.buffer = packetBuffer;
+          }
+        }
+        if (!this.expectedPacketLength) break;
+        const count = Math.min(bytes.length - offset, this.expectedPacketLength - this.bufferLength);
+        this.buffer.set(bytes.subarray(offset, offset + count), this.bufferLength);
+        this.bufferLength += count;
+        offset += count;
+        if (this.bufferLength < this.expectedPacketLength) break;
 
-      newBuffer.set(oldBuffer);
-      newBuffer.set(bytes, oldBuffer.length);
-
-      buffer = newBuffer;
-    } else {
-      const newBytes = new Uint8Array(bytes.length);
-      newBytes.set(bytes);
-      buffer = newBytes;
-    }
-    const opts = { protocolVersion: this.protocolVersion };
-
-    for (;;) {
-      const headerInfo = decodeHeader(buffer, opts);
-
-      if (headerInfo === undefined) {
-        break;
+        const buffer = this.buffer.subarray(0, this.bufferLength);
+        this.resetReceiveBuffer();
+        const opts = { protocolVersion: this.protocolVersion };
+        const headerInfo = decodeHeader(buffer, opts);
+        if (!headerInfo) throw new Error('Malformed MQTT header');
+        const packet = headerInfo.packetCmd.decode(
+          headerInfo.buffer, headerInfo.flags, headerInfo.remainingLength, this.utf8Decoder, opts,
+        );
+        if (!packet) throw new Error('Malformed MQTT packet');
+        this.log(`received ${packet.cmd} packet`, packet);
+        const previousState = this.connectionState;
+        this.packetReceived(packet);
+        if (this.connectionState !== previousState && this.connectionState !== 'connected') return;
       }
-      const packet = headerInfo.packetCmd.decode(
-        headerInfo.buffer,
-        headerInfo.flags,
-        headerInfo.remainingLength,
-        this.utf8Decoder,
-        opts,
-      );
-      if (packet === undefined) {
-        break;
-      }
-
-      this.log(`received ${packet.cmd} packet`, packet);
-
-      this.packetReceived(packet);
-
-      if (headerInfo.packetLength < buffer.length) {
-        buffer = buffer.slice(headerInfo.packetLength);
-      } else {
-        buffer = undefined;
-        break;
-      }
+    } catch (error) {
+      this.resetReceiveBuffer();
+      throw error; // Transport owner closes this connection and starts recovery.
     }
-
-    this.buffer = buffer;
   }
 
   protected packetReceived(packet: AnyPacket) {
@@ -862,9 +905,11 @@ export abstract class BaseClient {
       case 'connack':
         this.handleConnack(packet);
         break;
-      case 'publish':
-        this.handlePublish(packet);
+      case 'publish': {
+        const epoch = this.connectionEpoch;
+        void this.handlePublish(packet).catch(error => this.incomingFailed(error, epoch));
         break;
+      }
       case 'puback':
         this.handlePuback(packet);
         break;
@@ -891,6 +936,18 @@ export abstract class BaseClient {
     }
   }
 
+  private incomingFailed(error: unknown, epoch: number) {
+    if (epoch !== this.connectionEpoch ||
+        (this.connectionState !== 'connected' && this.connectionState !== 'connecting')) return;
+    this.log('MQTT incoming message rejected', error);
+    this.emit('transportFailure', error);
+    this.stopTimers();
+    this.changeState('offline');
+    void this.close().catch(reason => this.log('receive close failed', reason)).then(() => {
+      if (epoch === this.connectionEpoch && this.connectionState === 'offline') this.startReconnectTimer();
+    });
+  }
+
   protected protocolViolation(msg: string) {
     this.log('protocolViolation', msg);
   }
@@ -905,6 +962,22 @@ export abstract class BaseClient {
         );
     }
 
+    if (packet.returnCode !== 0) {
+      const error = new Error(`MQTT CONNACK refused: ${packet.returnCode}`);
+      const retryable = packet.returnCode === 3;
+      const epoch = this.connectionEpoch;
+      this.connectionBlocked = !retryable;
+      this.stopTimers();
+      this.emit('connackRejected', packet.returnCode, retryable);
+      this.changeState(retryable ? 'offline' : 'disconnected');
+      try { await this.close(); }
+      catch (reason) { this.log('CONNACK refusal close failed', reason); }
+      if (epoch !== this.connectionEpoch) return;
+      // Server unavailable is transient: preserve the original initialization
+      // waiter so a later successful login continues normal subscription setup.
+      if (!retryable || !this.startReconnectTimer()) this.notifyConnectRejected(error);
+      return;
+    }
     this.everConnected = true;
     this.stopConnectTimer();
     this.connectionEstablished(packet);
@@ -944,8 +1017,14 @@ export abstract class BaseClient {
       const emitMessage = !packet.dup || !(await this.incomingStore.has(packet.messageId));
 
       if (emitMessage) {
-        this.incomingStore.store(packet.messageId);
-        this.emit('message', packet.topic, packet.payload, packet);
+        await this.incomingStore.store(packet.messageId);
+        try { this.emit('message', packet.topic, packet.payload, packet); }
+        catch (error) {
+          // Rejected messages were never accepted by the application. Do not
+          // retain a deduplication record or acknowledge them on redelivery.
+          await this.incomingStore.discard(packet.messageId);
+          throw error;
+        }
       }
 
       this.send({
@@ -1159,6 +1238,7 @@ export abstract class BaseClient {
   }
 
   protected startReconnectTimer() {
+    if (this.connectionBlocked) return false;
     const { options } = this;
 
     let connectOptions: Partial<BaseConnectOptions> = {};
@@ -1288,7 +1368,12 @@ export abstract class BaseClient {
   }
 
   protected stopTimers() {
-    this.abandonSubscriptions(new Error('MQTT operation stopped'));
+    this.resetReceiveBuffer();
+    const error = new Error('MQTT operation stopped');
+    this.abandonSubscriptions(error);
+    // Also finish callers queued while offline, before any SUBSCRIBE was sent.
+    for (const deferred of this.unresolvedSubscribes.values()) deferred.reject(error);
+    this.unresolvedSubscribes.clear();
     this.stopConnectTimer();
     this.stopReconnectTimer();
     this.stopKeepaliveTimer();

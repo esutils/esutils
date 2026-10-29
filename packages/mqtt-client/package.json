@@ -25,7 +25,8 @@
   "scripts": {
     "build": "yarn run -T tsc -p tsconfig.mjs.json",
     "prepublishOnly": "yarn run build",
-    "test": "yarn run build && node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.ts"
+    "test": "yarn run test:regression && node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.ts",
+    "test:regression": "yarn run -T tsc -p ../mqtt-packet/tsconfig.mjs.json && yarn run build && node test/reconnect-subscription.mjs && node test/node-lifecycle.mjs && node test/receive-safety.mjs && node test/concurrent-subscribe.mjs && node test/transport-boundaries.mjs"
   },
   "type": "module",
   "types": "./dist/index.d.mts",

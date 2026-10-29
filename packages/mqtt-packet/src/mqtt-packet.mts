@@ -171,10 +171,18 @@ export function decodeHeader(
     throw new Error(createHeaderFlagsError(requiredHeaderFlag, PacketCmdToName[cmdId]));
   }
 
-  const { length: remainingLength, bytesUsedToEncodeLength } = decodeLength(
-    buffer,
-    1,
-  );
+  const lengthInfo = decodeLength(buffer, 1);
+  if (!lengthInfo) return undefined;
+  const { length: remainingLength, bytesUsedToEncodeLength } = lengthInfo;
+  // Validate body lengths before any decoder can read into the next frame.
+  if (_opts.protocolVersion !== 5) {
+    const exactLength = cmdId === 2 || (cmdId >= 4 && cmdId <= 7) || cmdId === 11 ? 2
+      : cmdId >= 12 && cmdId <= 14 ? 0 : undefined;
+    const minimumLength = cmdId === 9 ? 3 : cmdId === 8 ? 5 : cmdId === 10 ? 4 : cmdId === 3 ? 2 : 0;
+    if ((exactLength !== undefined && remainingLength !== exactLength) || remainingLength < minimumLength) {
+      throw new Error(cmdId === 11 ? 'Malformed unsuback, payload length must be 2' : 'Malformed MQTT packet length');
+    }
+  }
 
   const headerLength = 1 + bytesUsedToEncodeLength;
   const packetLength = headerLength + remainingLength;
@@ -184,7 +192,7 @@ export function decodeHeader(
   return {
     cmdId,
     packetCmd,
-    buffer: buffer.subarray(headerLength),
+    buffer: buffer.subarray(headerLength, packetLength),
     flags: headerFlag,
     packetLength: headerLength + remainingLength,
     remainingLength,

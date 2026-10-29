@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {BaseClient} from '../dist/base-client.mjs';
+import {encode,decode} from '../../mqtt-packet/dist/index.mjs';
+class Probe extends BaseClient {
+ packets=[]; received=[]; closed=0;
+ async open(){} async close(){this.closed++} validateURL(){}
+ async send(p){this.packets.push(p)} startReconnectTimer(){return true}
+ packetReceived(p){this.received.push(p);super.packetReceived(p)}
+}
+const opts={url:new URL('mqtt://localhost'),protocolVersion:4,keepalive:0,utf8Encoder:new TextEncoder(),utf8Decoder:new TextDecoder()};
+const tests={
+ async connackRefused(){const c=new Probe(opts);c.connectionState='connecting';let outcome; c.unresolvedConnect={reject:e=>{outcome=e},resolve:()=>{outcome='success'}};await c.handleConnack({cmd:'connack',returnCode:5});assert.equal(c.connectionState,'disconnected');assert(outcome instanceof Error);assert.equal(c.closed,1);assert.equal(c.packets.length,0);c.stopTimers()},
+ async temporaryConnack(){const c=new Probe(opts);c.connectionState='connecting';let outcome='pending',retries=0;c.unresolvedConnect={reject:()=>{outcome='rejected'},resolve:()=>{outcome='resolved'}};c.startReconnectTimer=()=>{retries++;return true};await c.handleConnack({cmd:'connack',returnCode:3});assert.equal(outcome,'pending');assert.equal(retries,1);assert.equal(c.connectionState,'offline');c.connectionState='connecting';await c.handleConnack({cmd:'connack',returnCode:0});assert.equal(outcome,'resolved');c.stopTimers()},
+ async permanentConnack(){for(const code of [1,2,4,5]){const c=new Probe(opts);c.connectionState='connecting';let retries=0;c.startReconnectTimer=()=>{retries++;return true};await c.handleConnack({cmd:'connack',returnCode:code});assert.equal(retries,0);assert.equal(c.connectionState,'disconnected');c.connectionClosed();assert.equal(retries,0);c.stopTimers()}},
+ async exhaustedConnack(){const c=new Probe(opts);c.connectionState='connecting';let rejected=false;c.unresolvedConnect={reject:()=>{rejected=true},resolve:()=>{}};c.startReconnectTimer=()=>false;await c.handleConnack({cmd:'connack',returnCode:3});assert(rejected);c.stopTimers()},
+ async oversizedHeader(){const c=new Probe({...opts,maxPacketSize:64});assert.throws(()=>c.bytesReceived(Uint8Array.from([0x30,0x80,1])),/size|large/i);assert.equal(c.buffer,undefined)},
+ async fragmented(){const c=new Probe({...opts,maxPacketSize:256});const packet=encode({cmd:'publish',qos:0,topic:'cmd',payload:new Uint8Array(150)},opts.utf8Encoder,opts);for(const byte of packet)c.bytesReceived(Uint8Array.of(byte));assert.equal(c.received.length,1);assert.equal(c.received[0].payload.length,150);assert.equal(c.buffer,undefined)},
+ async linearAllocations(){const c=new Probe({...opts,maxPacketSize:256});const packet=encode({cmd:'publish',qos:0,topic:'cmd',payload:new Uint8Array(150)},opts.utf8Encoder,opts);const chunks=Array.from(packet,x=>Uint8Array.of(x));const original=globalThis.Uint8Array;const allocated=[];globalThis.Uint8Array=new Proxy(original,{construct(target,args){if(typeof args[0]==='number')allocated.push(args[0]);return new target(...args)}});try{for(const chunk of chunks)c.bytesReceived(chunk)}finally{globalThis.Uint8Array=original}assert(allocated.reduce((a,b)=>a+b,0)<=packet.length+5);assert.equal(c.received.length,1);console.log('  fragmented allocation bytes:',allocated.reduce((a,b)=>a+b,0),'for packet bytes:',packet.length)},
+ async partialClose(){const c=new Probe({...opts,maxPacketSize:256});c.connectionState='connected';c.bytesReceived(Uint8Array.from([0x30,0x80,1,0]));assert(c.buffer);c.connectionClosed();assert.equal(c.buffer,undefined);c.stopTimers()},
+ async receiverFailure(){const c=new Probe(opts);c.connectionState='connected';const unhandled=[];const capture=e=>unhandled.push(e);process.on('unhandledRejection',capture);try{c.on('message',()=>{throw new Error('MQTT command receive queue full')});c.packetReceived({cmd:'publish',qos:1,topic:'cmd',payload:new Uint8Array(1),messageId:1});await new Promise(r=>setTimeout(r,10));assert.equal(c.closed,1);assert.equal(c.connectionState,'offline');assert.equal(c.packets.length,0);assert.equal(unhandled.length,0)}finally{process.off('unhandledRejection',capture);c.stopTimers()}},
+ async receiverFailureQos2(){const c=new Probe(opts);c.connectionState='connected';c.on('message',()=>{throw Error('queue full')});c.packetReceived({cmd:'publish',qos:2,dup:false,topic:'cmd',payload:new Uint8Array(1),messageId:8});await new Promise(r=>setTimeout(r,10));assert.equal(c.closed,1);assert.equal(c.incomingStore.packets.size,0);assert.equal(c.packets.length,0);c.stopTimers()},
+ async coalesced(){const c=new Probe({...opts,maxPacketSize:8});c.bytesReceived(Uint8Array.from([0xd0,0,0xd0,0,0xd0,0,0xd0,0,0xd0,0]));assert.equal(c.received.length,5)},
+ async boundary(){assert.throws(()=>decode(Uint8Array.from([0x30,2,0,5,65,66,67,68,69]),opts.utf8Decoder,opts),/topic|short|length/i)},
+ async malformedLength(){const c=new Probe(opts);assert.throws(()=>c.bytesReceived(Uint8Array.from([0x30,0x80,0x80,0x80,0x80])),/length|malformed/i)},
+ async impossibleFixedLength(){assert.throws(()=>decode(Uint8Array.from([0x90,1,1,0xd0,0]),opts.utf8Decoder,opts));assert.throws(()=>decode(Uint8Array.from([0x20,1,0,0xd0,0]),opts.utf8Decoder,opts))},
+};
+for(const [name,test]of Object.entries(tests)){try{await test();console.log('PASS',name)}catch(e){process.exitCode=1;console.error('FAIL',name,e.message)}}

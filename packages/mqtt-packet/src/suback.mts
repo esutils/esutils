@@ -27,7 +27,7 @@ export default {
     const payloadStart = idStart + 2;
     const granted = [];
 
-    if (remainingLength <= 0) {
+    if (remainingLength < 3) {
       throw new Error('Malformed suback, no payload specified');
     }
 
